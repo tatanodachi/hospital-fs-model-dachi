@@ -11,7 +11,8 @@ import {
   PieChart as PieChartIcon, Map, Landmark, ArrowRightLeft, X, Download, 
   AlertTriangle, Grid, Clock, Lock, Unlock, Info, MapPin, Building,
   Cloud, CloudOff, ChevronDown, GripHorizontal, Maximize, Minimize,
-  BookOpen, Target, Search, FolderTree, BarChartHorizontal, Layers, Microscope
+  BookOpen, Target, Search, FolderTree, BarChartHorizontal, Layers, Microscope,
+  Bed, Timer, Network
 } from 'lucide-react';
 
 // ==========================================
@@ -897,220 +898,348 @@ const MarketValidationDisplay = memo(({ content, loading, onClose, color }) => (
 ));
 
 // ==========================================
-// 4. MAJOR VIEW COMPONENTS
+// 4. STRATEGIC FOUNDATION (BENTO UI)
 // ==========================================
 
+const BentoBox = memo(({ children, className = "", colSpan = "col-span-12" }) => (
+  <div className={`bg-white rounded-[28px] p-6 lg:p-8 shadow-sm border border-[#D8D8D8] flex flex-col transition-all hover:shadow-md ${colSpan} ${className}`}>
+    {children}
+  </div>
+));
+
+const BentoIcon = memo(({ icon, color = "blue", className = "" }) => {
+  const bgColors = {
+    blue: 'bg-[#1C6048]/10 text-[#1C6048]',
+    emerald: 'bg-[#1E2F31]/10 text-[#1E2F31]',
+    indigo: 'bg-[#9B8B70]/10 text-[#9B8B70]',
+    rose: 'bg-[#4C4A4B]/10 text-[#4C4A4B]',
+    amber: 'bg-[#99B6AA]/20 text-[#1E2F31]',
+  };
+  return (
+    <div className={`w-14 h-14 rounded-[20px] flex items-center justify-center mb-5 shrink-0 ${bgColors[color]} ${className}`}>
+      {icon}
+    </div>
+  );
+});
+
 const ProjectOverviewView = memo(({ info, setInfo, isLocked }) => (
-  <div className="space-y-6 animate-in fade-in duration-500 pb-12">
-    <div className="bg-white p-6 lg:p-8 rounded-2xl shadow-sm border border-[#D8D8D8]">
-      <div className="flex justify-between items-center mb-8 border-b border-[#D8D8D8] pb-4"><h2 className="text-xl font-bold flex items-center gap-2 uppercase tracking-tight text-[#1E2F31]"><Info className="text-[#1C6048]" /> Project Overview</h2></div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
-        <div className="space-y-6">
-          <SectionTitle title="General Information" icon={<Building size={16}/>} color="blue" />
-          <div className="space-y-4">
-            <ProjectInfoFieldComp label="Project Name" value={info.name} onChange={(v) => setInfo({...info, name: v})} isLocked={isLocked} icon={<FileText size={14}/>} />
-            <ProjectInfoFieldComp label="Location" value={info.location} onChange={(v) => setInfo({...info, location: v})} isLocked={isLocked} icon={<MapPin size={14}/>} />
-            <ProjectInfoFieldComp label="Hospital Class" value={info.type} onChange={(v) => setInfo({...info, type: v})} isLocked={isLocked} icon={<Stethoscope size={14}/>} />
-            <ProjectInfoFieldComp label="Development Status" value={info.status} onChange={(v) => setInfo({...info, status: v})} isLocked={isLocked} icon={<Clock size={14}/>} />
-          </div>
-        </div>
-        <div className="space-y-6">
-          <SectionTitle title="Site Specifications" icon={<Map size={16}/>} color="emerald" />
-          <div className="space-y-4">
-              <div className="p-4 bg-[#EFEBE7] rounded-xl border border-[#D8D8D8] space-y-3">
-                <div className="flex justify-between items-center"><span className="text-[10px] font-bold text-[#4C4A4B] uppercase">Total Land Area</span><span className="text-sm font-black text-[#1E2F31]">{String(info.totalLand)}</span></div>
-                <div className="flex justify-between items-center"><span className="text-[10px] font-bold text-[#4C4A4B] uppercase">Total Building GFA</span><span className="text-sm font-black text-[#1E2F31]">{String(info.totalBuilding)}</span></div>
-              </div>
-              <p className="text-[11px] text-[#4C4A4B] leading-relaxed italic p-2 bg-white border-l-4 border-[#9B8B70] rounded">This project information serves as the primary context for both the Operational (OpCo) and Real Estate (PropCo) models.</p>
-          </div>
+  <div className="grid grid-cols-1 md:grid-cols-12 gap-6 animate-in fade-in duration-500 pb-12">
+    {/* Main General Info Bento */}
+    <BentoBox colSpan="md:col-span-12 lg:col-span-8">
+      <div className="flex items-center gap-4 mb-6">
+        <BentoIcon icon={<Building size={28}/>} color="blue" className="mb-0" />
+        <div>
+          <h2 className="text-2xl font-black text-[#1E2F31] tracking-tight">Project Overview</h2>
+          <p className="text-xs text-[#4C4A4B] font-medium mt-1">General hospital master development information.</p>
         </div>
       </div>
-    </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-2">
+        <ProjectInfoFieldComp label="Project Name" value={info.name} onChange={(v) => setInfo({...info, name: v})} isLocked={isLocked} icon={<FileText size={14}/>} />
+        <ProjectInfoFieldComp label="Location" value={info.location} onChange={(v) => setInfo({...info, location: v})} isLocked={isLocked} icon={<MapPin size={14}/>} />
+        <ProjectInfoFieldComp label="Hospital Class" value={info.type} onChange={(v) => setInfo({...info, type: v})} isLocked={isLocked} icon={<Stethoscope size={14}/>} />
+        <ProjectInfoFieldComp label="Development Status" value={info.status} onChange={(v) => setInfo({...info, status: v})} isLocked={isLocked} icon={<Clock size={14}/>} />
+      </div>
+    </BentoBox>
+
+    {/* Site Specs Bento */}
+    <BentoBox colSpan="md:col-span-12 lg:col-span-4" className="bg-[#EFEBE7] border-transparent">
+      <BentoIcon icon={<Map size={28}/>} color="indigo" />
+      <h2 className="text-xl font-black text-[#1E2F31] tracking-tight mb-6">Site Specifications</h2>
+      <div className="space-y-4 flex-1">
+          <div className="p-5 bg-white rounded-2xl border border-[#D8D8D8] shadow-sm flex flex-col gap-1 hover:-translate-y-1 transition-transform">
+            <span className="text-[10px] font-bold text-[#4C4A4B] uppercase tracking-widest">Total Land Area</span>
+            <span className="text-2xl font-black text-[#1E2F31]">{String(info.totalLand)}</span>
+          </div>
+          <div className="p-5 bg-white rounded-2xl border border-[#D8D8D8] shadow-sm flex flex-col gap-1 hover:-translate-y-1 transition-transform">
+            <span className="text-[10px] font-bold text-[#4C4A4B] uppercase tracking-widest">Total Building GFA</span>
+            <span className="text-2xl font-black text-[#1E2F31]">{String(info.totalBuilding)}</span>
+          </div>
+      </div>
+      <p className="text-[10px] text-[#4C4A4B] font-medium leading-relaxed mt-6 bg-white/60 p-3 rounded-xl">
+        This project information serves as the primary context for both the Operational (OpCo) and Real Estate (PropCo) models.
+      </p>
+    </BentoBox>
   </div>
 ));
 
 const StudyView = memo(({ isPresenting, info }) => {
-  const [activeMiniTab, setActiveMiniTab] = useState('macro');
+  const [activeMiniTab, setActiveMiniTab] = useState('marketGap');
 
   return (
-    <div className="space-y-4 lg:space-y-6 animate-in fade-in duration-500 pb-12">
+    <div className="space-y-6 animate-in fade-in duration-500 pb-12">
         {/* Navigation Bar for Study */}
-        <div className="flex bg-white p-1.5 rounded-xl border border-[#D8D8D8] shadow-sm w-fit overflow-x-auto max-w-full">
+        <div className="flex bg-white p-1.5 rounded-2xl border border-[#D8D8D8] shadow-sm w-fit overflow-x-auto max-w-full">
           <button 
             onClick={() => setActiveMiniTab('macro')} 
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${activeMiniTab === 'macro' ? 'bg-[#1C6048] text-white shadow-md' : 'text-[#4C4A4B] hover:text-[#1E2F31] hover:bg-[#EFEBE7]/50'}`}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-[14px] text-xs font-bold transition-all whitespace-nowrap ${activeMiniTab === 'macro' ? 'bg-[#1C6048] text-white shadow-md' : 'text-[#4C4A4B] hover:text-[#1E2F31] hover:bg-[#EFEBE7]/50'}`}
           >
-            <Map size={14}/> Macro Environment
+            <Map size={16}/> Macro Environment
           </button>
           <button 
             onClick={() => setActiveMiniTab('marketGap')} 
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${activeMiniTab === 'marketGap' ? 'bg-[#9B8B70] text-white shadow-md' : 'text-[#4C4A4B] hover:text-[#1E2F31] hover:bg-[#EFEBE7]/50'}`}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-[14px] text-xs font-bold transition-all whitespace-nowrap ${activeMiniTab === 'marketGap' ? 'bg-[#9B8B70] text-white shadow-md' : 'text-[#4C4A4B] hover:text-[#1E2F31] hover:bg-[#EFEBE7]/50'}`}
           >
-            <PieChartIcon size={14}/> Market Gap
+            <PieChartIcon size={16}/> Market Gap
           </button>
           <button 
             onClick={() => setActiveMiniTab('marketStudy')} 
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${activeMiniTab === 'marketStudy' ? 'bg-[#1E2F31] text-white shadow-md' : 'text-[#4C4A4B] hover:text-[#1E2F31] hover:bg-[#EFEBE7]/50'}`}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-[14px] text-xs font-bold transition-all whitespace-nowrap ${activeMiniTab === 'marketStudy' ? 'bg-[#1E2F31] text-white shadow-md' : 'text-[#4C4A4B] hover:text-[#1E2F31] hover:bg-[#EFEBE7]/50'}`}
           >
-            <Search size={14}/> Market Study
+            <Search size={16}/> Market Study
           </button>
           <button 
             onClick={() => setActiveMiniTab('opportunities')} 
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${activeMiniTab === 'opportunities' ? 'bg-[#1C6048] text-white shadow-md' : 'text-[#4C4A4B] hover:text-[#1E2F31] hover:bg-[#EFEBE7]/50'}`}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-[14px] text-xs font-bold transition-all whitespace-nowrap ${activeMiniTab === 'opportunities' ? 'bg-[#1C6048] text-white shadow-md' : 'text-[#4C4A4B] hover:text-[#1E2F31] hover:bg-[#EFEBE7]/50'}`}
           >
-            <Target size={14}/> Opportunities
+            <Target size={16}/> Opportunities
           </button>
         </div>
 
         {/* Dynamic Content Rendering */}
         {activeMiniTab === 'macro' && (
-          <div className="bg-white p-6 lg:p-8 rounded-2xl shadow-sm border border-[#D8D8D8] animate-in fade-in zoom-in-95 duration-300">
-             <SectionTitle title="Macroeconomic & Demographic Overview" icon={<TrendingUp size={16}/>} color="blue" />
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 animate-in fade-in zoom-in-95 duration-300">
              
-             <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
-                <div className="p-5 bg-[#EFEBE7] rounded-xl border border-[#D8D8D8]">
-                   <p className="text-[10px] text-[#4C4A4B] font-bold uppercase tracking-wider mb-2">Regional Population</p>
-                   <p className="text-2xl lg:text-3xl font-black text-[#1E2F31]">3.2M</p>
-                   <div className="mt-2 inline-block px-2 py-1 bg-[#1C6048]/10 text-[#1C6048] rounded text-[10px] font-bold">+1.5% Annual Growth</div>
-                </div>
-                <div className="p-5 bg-[#EFEBE7] rounded-xl border border-[#D8D8D8]">
-                   <p className="text-[10px] text-[#4C4A4B] font-bold uppercase tracking-wider mb-2">Regional GDP Growth</p>
-                   <p className="text-2xl lg:text-3xl font-black text-[#1E2F31]">5.2%</p>
-                   <div className="mt-2 inline-block px-2 py-1 bg-[#9B8B70]/10 text-[#9B8B70] rounded text-[10px] font-bold">Above National Avg</div>
-                </div>
-                <div className="p-5 bg-[#EFEBE7] rounded-xl border border-[#D8D8D8]">
-                   <p className="text-[10px] text-[#4C4A4B] font-bold uppercase tracking-wider mb-2">Healthcare Spend per Capita</p>
-                   <p className="text-2xl lg:text-3xl font-black text-[#1E2F31]">Rp 2.4M</p>
-                   <div className="mt-2 inline-block px-2 py-1 bg-[#1C6048]/10 text-[#1C6048] rounded text-[10px] font-bold">Growing Middle Class</div>
-                </div>
-             </div>
+             <BentoBox colSpan="md:col-span-4" className="bg-[#1C6048] text-white border-transparent">
+                <BentoIcon icon={<Users size={28} />} color="emerald" className="bg-white/20 text-white" />
+                <p className="text-[11px] text-white/80 font-bold uppercase tracking-wider mb-2">Regional Population</p>
+                <p className="text-4xl lg:text-5xl font-black mb-4">3.2M</p>
+                <div className="mt-auto inline-flex px-3 py-1.5 bg-white/20 rounded-lg text-xs font-bold">+1.5% Annual Growth</div>
+             </BentoBox>
 
-             <div className="mt-8 p-5 bg-[#F9F8F6] border-l-4 border-l-[#1E2F31] rounded-r-xl border-y border-r border-[#D8D8D8]">
-               <h4 className="text-sm font-bold text-[#1E2F31] mb-2 flex items-center gap-2"><MapPin size={16} className="text-[#9B8B70]"/> Key Regional Insights</h4>
-               <ul className="space-y-2 text-xs text-[#4C4A4B] font-medium ml-6 list-disc">
-                 <li>Rapid urbanization and expansion of residential developments in the primary catchment area.</li>
-                 <li>Increasing insurance penetration (BPJS and Private) driving healthcare utilization rates higher.</li>
-                 <li>Aging demographic segment is growing, indicating future demand for specialized geriatric and chronic care.</li>
-               </ul>
-             </div>
+             <BentoBox colSpan="md:col-span-4" className="bg-[#1E2F31] text-white border-transparent">
+                <BentoIcon icon={<TrendingUp size={28} />} color="emerald" className="bg-white/20 text-white" />
+                <p className="text-[11px] text-white/80 font-bold uppercase tracking-wider mb-2">Regional GDP Growth</p>
+                <p className="text-4xl lg:text-5xl font-black mb-4">5.2%</p>
+                <div className="mt-auto inline-flex px-3 py-1.5 bg-white/20 rounded-lg text-xs font-bold">Above National Avg</div>
+             </BentoBox>
+
+             <BentoBox colSpan="md:col-span-4" className="bg-[#9B8B70] text-white border-transparent">
+                <BentoIcon icon={<Coins size={28} />} color="emerald" className="bg-white/20 text-white" />
+                <p className="text-[11px] text-white/80 font-bold uppercase tracking-wider mb-2">Healthcare Spend p.c.</p>
+                <p className="text-4xl lg:text-5xl font-black mb-4">Rp 2.4M</p>
+                <div className="mt-auto inline-flex px-3 py-1.5 bg-white/20 rounded-lg text-xs font-bold">Growing Middle Class</div>
+             </BentoBox>
+
+             <BentoBox colSpan="md:col-span-12">
+               <div className="flex items-center gap-4 mb-6">
+                 <BentoIcon icon={<MapPin size={24}/>} color="indigo" className="mb-0 w-12 h-12 rounded-xl" />
+                 <h2 className="text-xl font-black text-[#1E2F31] tracking-tight">Key Regional Insights</h2>
+               </div>
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                 <div className="bg-[#F9F8F6] p-5 rounded-2xl border border-[#D8D8D8]">
+                    <h4 className="font-bold text-[#1E2F31] mb-2 text-sm">Urbanization</h4>
+                    <p className="text-xs text-[#4C4A4B] leading-relaxed font-medium">Rapid urbanization and expansion of residential developments in the primary catchment area.</p>
+                 </div>
+                 <div className="bg-[#F9F8F6] p-5 rounded-2xl border border-[#D8D8D8]">
+                    <h4 className="font-bold text-[#1E2F31] mb-2 text-sm">Insurance Penetration</h4>
+                    <p className="text-xs text-[#4C4A4B] leading-relaxed font-medium">Increasing insurance penetration (BPJS and Private) driving healthcare utilization rates higher.</p>
+                 </div>
+                 <div className="bg-[#F9F8F6] p-5 rounded-2xl border border-[#D8D8D8]">
+                    <h4 className="font-bold text-[#1E2F31] mb-2 text-sm">Aging Demographic</h4>
+                    <p className="text-xs text-[#4C4A4B] leading-relaxed font-medium">Aging demographic segment is growing, indicating future demand for specialized geriatric and chronic care.</p>
+                 </div>
+               </div>
+             </BentoBox>
           </div>
         )}
 
         {activeMiniTab === 'marketGap' && (
-          <div className="bg-white p-6 lg:p-8 rounded-2xl shadow-sm border border-[#D8D8D8] animate-in fade-in zoom-in-95 duration-300">
-             <SectionTitle title="Supply & Demand Analysis (Bed Gap)" icon={<PieChartIcon size={16}/>} color="emerald" />
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 animate-in fade-in zoom-in-95 duration-300">
              
-             <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6 mb-8">
-                <div className="p-5 bg-white border border-[#D8D8D8] rounded-xl shadow-sm text-center">
-                   <p className="text-[10px] text-[#4C4A4B] font-bold uppercase tracking-wider mb-1">Current Supply</p>
-                   <p className="text-3xl font-black text-[#99B6AA]">1,850</p>
-                   <p className="text-[10px] font-bold text-[#4C4A4B] mt-1">Existing Beds</p>
+             {/* Supply & Demand Bento (Rebuilt to match slide ratio) */}
+             <BentoBox colSpan="md:col-span-12">
+                <div className="flex flex-col md:flex-row items-center gap-8">
+                   <div className="flex-1 text-center md:text-left">
+                      <div className="flex items-center justify-center md:justify-start gap-4 mb-4">
+                        <BentoIcon icon={<Bed size={24}/>} color="emerald" className="mb-0 w-12 h-12 rounded-xl" />
+                        <h2 className="text-xl font-black text-[#1E2F31] tracking-tight">Hospital Beds Shortage</h2>
+                      </div>
+                      <p className="text-[13px] text-[#4C4A4B] leading-relaxed font-medium">
+                        Indonesia currently operates with a severe deficit in healthcare infrastructure compared to global benchmarks, indicating massive unfulfilled demand for modern inpatient facilities.
+                      </p>
+                   </div>
+                   <div className="flex-1 w-full flex items-center justify-center gap-4 lg:gap-8 p-6 lg:p-8 bg-[#F9F8F6] border border-[#D8D8D8] rounded-[24px]">
+                       <div className="text-center">
+                           <p className="text-5xl lg:text-6xl font-black text-[#1E2F31]">1.4</p>
+                           <p className="text-[10px] font-bold text-[#4C4A4B] uppercase tracking-widest mt-3">Indonesia</p>
+                       </div>
+                       <div className="text-3xl lg:text-4xl font-black text-[#D8D8D8]">&lt;</div>
+                       <div className="text-center">
+                           <p className="text-5xl lg:text-6xl font-black text-[#1C6048]">4.5</p>
+                           <p className="text-[10px] font-bold text-[#4C4A4B] uppercase tracking-widest mt-3">Average Standard</p>
+                       </div>
+                   </div>
                 </div>
-                <div className="p-5 bg-white border border-[#D8D8D8] rounded-xl shadow-sm text-center">
-                   <p className="text-[10px] text-[#4C4A4B] font-bold uppercase tracking-wider mb-1">WHO Standard Demand</p>
-                   <p className="text-3xl font-black text-[#1E2F31]">3,200</p>
-                   <p className="text-[10px] font-bold text-[#4C4A4B] mt-1">Required Beds (1:1000 Ratio)</p>
-                </div>
-                <div className="p-5 bg-[#1C6048] border border-[#1C6048] rounded-xl shadow-md text-center text-white">
-                   <p className="text-[10px] text-white/80 font-bold uppercase tracking-wider mb-1">Market Shortage</p>
-                   <p className="text-3xl font-black text-white">1,350</p>
-                   <p className="text-[10px] font-bold text-white/90 mt-1">Unmet Bed Demand</p>
-                </div>
-             </div>
+             </BentoBox>
 
-             <h4 className="text-xs font-bold text-[#1E2F31] mb-3 uppercase tracking-widest">Bed Ratio Fulfillment</h4>
-             <div className="relative h-6 bg-[#EFEBE7] rounded-full overflow-hidden border border-[#D8D8D8]">
-                <div className="absolute top-0 left-0 h-full bg-[#99B6AA]" style={{ width: '57.8%' }}></div>
-                <div className="absolute top-0 left-0 h-full flex items-center pl-4 text-[10px] font-black text-[#1E2F31]">57.8% Supplied</div>
-                <div className="absolute top-0 right-0 h-full flex items-center pr-4 text-[10px] font-black text-[#4C4A4B]">42.2% Gap</div>
-             </div>
+             {/* Systemic Frictions Bento Grid (Matches Image: 8-4 Row / 3-6-3 Row) */}
+             
+             {/* Card 1: Physician (Wide 8-Col) */}
+             <BentoBox colSpan="md:col-span-12 lg:col-span-8" className="bg-[#EFEBE7] border-transparent">
+                <h3 className="font-black text-[15px] text-[#1E2F31] mb-6 text-center">Physician-to-Population Ratio</h3>
+                <div className="flex flex-col md:flex-row items-center justify-center gap-6 lg:gap-10 flex-1">
+                    <div className="flex items-center gap-3">
+                        <BentoIcon icon={<Stethoscope size={32}/>} color="blue" className="w-16 h-16 rounded-[20px] mb-0 bg-white shadow-sm text-[#1C6048]"/>
+                        <BentoIcon icon={<Users size={32}/>} color="emerald" className="w-16 h-16 rounded-[20px] mb-0 bg-[#1C6048] text-white shadow-sm"/>
+                    </div>
+                    <div className="text-center md:text-left">
+                        <div className="flex items-baseline gap-3 justify-center md:justify-start">
+                            <p className="text-5xl font-black text-[#1E2F31]">1</p>
+                            <p className="text-3xl font-black text-[#1E2F31]">:</p>
+                            <p className="text-5xl font-black text-[#1E2F31]">2000</p>
+                        </div>
+                        <p className="text-[11px] font-bold text-[#1E2F31] mt-2 uppercase tracking-widest">WHO Standards 1: 1000</p>
+                    </div>
+                    <p className="text-xs text-[#4C4A4B] leading-relaxed font-medium max-w-[200px] text-center md:text-left border-t md:border-t-0 md:border-l border-[#D8D8D8] pt-4 md:pt-0 md:pl-6">
+                        Operating at <strong className="text-[#1E2F31]">50%</strong> physician capacity.<br/><br/>A chronic shortage demands <strong className="text-[#1E2F31]">digital-first</strong> clinical support.
+                    </p>
+                </div>
+             </BentoBox>
+             
+             {/* Card 2: Quality Mismatch (Square 4-Col) */}
+             <BentoBox colSpan="md:col-span-12 lg:col-span-4" className="bg-[#F9F8F6] border-[#D8D8D8] items-center text-center">
+                <h3 className="font-black text-[15px] text-[#1E2F31] mb-6">Price vs Quality Mismatch</h3>
+                <BentoIcon icon={<Scale size={40}/>} color="emerald" className="w-24 h-24 rounded-[24px] mb-6 bg-[#E8EFEA] border border-[#1C6048]/20 text-[#1C6048]"/>
+                <p className="text-xs text-[#4C4A4B] leading-relaxed font-medium mt-auto">
+                    High out-of-pocket costs <strong className="text-[#1E2F31]">failing</strong> to deliver a <strong className="text-[#1E2F31]">Tier-A</strong> patient experience.
+                </p>
+             </BentoBox>
+             
+             {/* Card 3: Fragmented (Square 3-Col) */}
+             <BentoBox colSpan="md:col-span-6 lg:col-span-3" className="bg-[#F9F8F6] border-[#D8D8D8] items-center text-center">
+                <h3 className="font-black text-[15px] text-[#1E2F31] mb-6">Fragmented Operation</h3>
+                <BentoIcon icon={<Network size={36}/>} color="blue" className="w-20 h-20 rounded-[20px] mb-6 bg-white shadow-sm border border-[#D8D8D8] text-[#1C6048]"/>
+                <p className="text-[11px] text-[#4C4A4B] leading-relaxed font-medium mt-auto">
+                    <strong className="text-[#1E2F31]">Inefficient</strong> unified digital backbone, error-prone, and disconnected operations.
+                </p>
+             </BentoBox>
+
+             {/* Card 4: Admin Bottleneck (Wide 6-Col) */}
+             <BentoBox colSpan="md:col-span-12 lg:col-span-6" className="bg-white border-[#D8D8D8] items-center md:items-start text-center md:text-left flex-row flex-wrap md:flex-nowrap">
+                <div className="w-full flex flex-col items-center md:items-start h-full">
+                    <h3 className="font-black text-[15px] text-[#1E2F31] mb-6 w-full text-center md:text-left">Administrative Bottleneck per Patient Visit</h3>
+                    <div className="flex flex-col md:flex-row items-center justify-center gap-6 lg:gap-8 flex-1 w-full">
+                        <div className="flex flex-col items-center justify-center shrink-0">
+                            <BentoIcon icon={<Timer size={40}/>} color="indigo" className="w-24 h-24 rounded-[24px] mb-4 bg-[#F9F8F6] border border-[#D8D8D8] text-[#1C6048]"/>
+                            <p className="text-4xl font-black text-[#1E2F31] whitespace-nowrap">&gt; 2 Hours</p>
+                        </div>
+                        <p className="text-xs text-[#4C4A4B] leading-relaxed font-medium max-w-[260px] border-t md:border-t-0 md:border-l border-[#EFEBE7] pt-4 md:pt-0 md:pl-6 text-center md:text-left">
+                            Administrative friction paralyzes the patient journey and experience.<br/><br/>
+                            A <strong className="text-[#1E2F31]">2-hour</strong> wait for a <strong className="text-[#1E2F31]">15-minute</strong> consultation proves that Indonesia current "manual" hospital model is no longer viable.
+                        </p>
+                    </div>
+                </div>
+             </BentoBox>
+
+             {/* Card 5: Preventative (Square 3-Col) */}
+             <BentoBox colSpan="md:col-span-6 lg:col-span-3" className="bg-[#EFEBE7] border-transparent items-center text-center">
+                <h3 className="font-black text-[15px] text-[#1E2F31] mb-6">Lack of Preventative Screening</h3>
+                <BentoIcon icon={<Stethoscope size={36}/>} color="rose" className="w-20 h-20 rounded-[20px] mb-6 bg-[#F9F8F6] shadow-sm border border-[#D8D8D8] text-[#9B8B70]"/>
+                <p className="text-[11px] text-[#4C4A4B] leading-relaxed font-medium mt-auto">
+                    Only <strong className="text-[#1E2F31] text-sm">17.44%</strong> of Indonesian underwent preventive health screenings regularly.
+                </p>
+             </BentoBox>
           </div>
         )}
 
         {activeMiniTab === 'marketStudy' && (
-          <div className="bg-white p-6 lg:p-8 rounded-2xl shadow-sm border border-[#D8D8D8] animate-in fade-in zoom-in-95 duration-300">
-             <SectionTitle title="Competitor & Catchment Analysis" icon={<Users size={16}/>} color="indigo" />
-             
-             <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
-               <div className="space-y-4">
-                 <h4 className="text-sm font-bold text-[#1E2F31] flex items-center gap-2"><ShieldCheck size={16} className="text-[#1C6048]" /> Key Competitors (Class B & C)</h4>
-                 <div className="bg-[#EFEBE7]/50 rounded-xl border border-[#D8D8D8] divide-y divide-[#D8D8D8]">
-                    <div className="p-3 flex justify-between items-center hover:bg-white transition-colors">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 animate-in fade-in zoom-in-95 duration-300">
+             <BentoBox colSpan="md:col-span-6">
+                 <BentoIcon icon={<ShieldCheck size={28}/>} color="blue"/>
+                 <h2 className="text-xl font-black text-[#1E2F31] tracking-tight mb-6">Key Competitors</h2>
+                 <div className="bg-[#F9F8F6] rounded-2xl border border-[#D8D8D8] divide-y divide-[#D8D8D8] overflow-hidden flex-1">
+                    <div className="p-4 lg:p-5 flex justify-between items-center hover:bg-white transition-colors">
                       <div>
-                        <p className="font-bold text-[#1E2F31] text-xs">Hospital Alpha</p>
-                        <p className="text-[10px] text-[#4C4A4B]">Class B • 3.2km away</p>
+                        <p className="font-bold text-[#1E2F31] text-sm">Hospital Alpha</p>
+                        <p className="text-[11px] text-[#4C4A4B] font-medium mt-0.5">Class B • 3.2km away</p>
                       </div>
-                      <span className="font-mono text-xs font-black text-[#1C6048]">210 Beds</span>
+                      <div className="text-right">
+                        <span className="font-mono text-sm font-black text-[#1C6048] block">210</span>
+                        <span className="text-[9px] text-[#4C4A4B] font-bold uppercase">Beds</span>
+                      </div>
                     </div>
-                    <div className="p-3 flex justify-between items-center hover:bg-white transition-colors">
+                    <div className="p-4 lg:p-5 flex justify-between items-center hover:bg-white transition-colors">
                       <div>
-                        <p className="font-bold text-[#1E2F31] text-xs">Hospital Beta</p>
-                        <p className="text-[10px] text-[#4C4A4B]">Class C • 5.1km away</p>
+                        <p className="font-bold text-[#1E2F31] text-sm">Hospital Beta</p>
+                        <p className="text-[11px] text-[#4C4A4B] font-medium mt-0.5">Class C • 5.1km away</p>
                       </div>
-                      <span className="font-mono text-xs font-black text-[#9B8B70]">105 Beds</span>
+                      <div className="text-right">
+                        <span className="font-mono text-sm font-black text-[#9B8B70] block">105</span>
+                        <span className="text-[9px] text-[#4C4A4B] font-bold uppercase">Beds</span>
+                      </div>
                     </div>
-                    <div className="p-3 flex justify-between items-center hover:bg-white transition-colors">
+                    <div className="p-4 lg:p-5 flex justify-between items-center hover:bg-white transition-colors">
                       <div>
-                        <p className="font-bold text-[#1E2F31] text-xs">Hospital Gamma</p>
-                        <p className="text-[10px] text-[#4C4A4B]">Class C • 7.4km away</p>
+                        <p className="font-bold text-[#1E2F31] text-sm">Hospital Gamma</p>
+                        <p className="text-[11px] text-[#4C4A4B] font-medium mt-0.5">Class C • 7.4km away</p>
                       </div>
-                      <span className="font-mono text-xs font-black text-[#9B8B70]">80 Beds</span>
+                      <div className="text-right">
+                        <span className="font-mono text-sm font-black text-[#9B8B70] block">80</span>
+                        <span className="text-[9px] text-[#4C4A4B] font-bold uppercase">Beds</span>
+                      </div>
                     </div>
                  </div>
-               </div>
+             </BentoBox>
 
-               <div className="space-y-4">
-                 <h4 className="text-sm font-bold text-[#1E2F31] flex items-center gap-2"><Map size={16} className="text-[#9B8B70]" /> Patient Origin Catchment</h4>
-                 <div className="space-y-3">
+             <BentoBox colSpan="md:col-span-6" className="bg-[#1E2F31] text-white border-transparent">
+                 <BentoIcon icon={<Map size={28}/>} color="emerald" className="bg-white/20 text-white"/>
+                 <h2 className="text-xl font-black text-white tracking-tight mb-8">Patient Origin Catchment</h2>
+                 <div className="space-y-6 flex-1 flex flex-col justify-center">
                     <div>
-                      <div className="flex justify-between text-[10px] font-bold mb-1"><span className="text-[#1E2F31]">Primary (0-5 km)</span><span className="text-[#1C6048]">60%</span></div>
-                      <div className="h-2 bg-[#EFEBE7] rounded-full overflow-hidden"><div className="h-full bg-[#1C6048] w-[60%]"></div></div>
+                      <div className="flex justify-between text-xs font-bold mb-2"><span className="text-white/80">Primary (0-5 km)</span><span className="text-white font-black text-lg">60%</span></div>
+                      <div className="h-3 bg-white/10 rounded-full overflow-hidden"><div className="h-full bg-[#1C6048] w-[60%] rounded-full"></div></div>
                     </div>
                     <div>
-                      <div className="flex justify-between text-[10px] font-bold mb-1"><span className="text-[#1E2F31]">Secondary (5-10 km)</span><span className="text-[#99B6AA]">30%</span></div>
-                      <div className="h-2 bg-[#EFEBE7] rounded-full overflow-hidden"><div className="h-full bg-[#99B6AA] w-[30%]"></div></div>
+                      <div className="flex justify-between text-xs font-bold mb-2"><span className="text-white/80">Secondary (5-10 km)</span><span className="text-white font-black text-lg">30%</span></div>
+                      <div className="h-3 bg-white/10 rounded-full overflow-hidden"><div className="h-full bg-[#99B6AA] w-[30%] rounded-full"></div></div>
                     </div>
                     <div>
-                      <div className="flex justify-between text-[10px] font-bold mb-1"><span className="text-[#1E2F31]">Tertiary (&gt;10 km)</span><span className="text-[#9B8B70]">10%</span></div>
-                      <div className="h-2 bg-[#EFEBE7] rounded-full overflow-hidden"><div className="h-full bg-[#9B8B70] w-[10%]"></div></div>
+                      <div className="flex justify-between text-xs font-bold mb-2"><span className="text-white/80">Tertiary (&gt;10 km)</span><span className="text-white font-black text-lg">10%</span></div>
+                      <div className="h-3 bg-white/10 rounded-full overflow-hidden"><div className="h-full bg-[#9B8B70] w-[10%] rounded-full"></div></div>
                     </div>
                  </div>
-               </div>
-             </div>
+             </BentoBox>
           </div>
         )}
 
         {activeMiniTab === 'opportunities' && (
-          <div className="bg-white p-6 lg:p-8 rounded-2xl shadow-sm border border-[#D8D8D8] animate-in fade-in zoom-in-95 duration-300">
-             <SectionTitle title="Strategic Positioning & Opportunities" icon={<Target size={16}/>} color="amber" />
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 animate-in fade-in zoom-in-95 duration-300">
+             <BentoBox colSpan="md:col-span-6" className="bg-[#E8EFEA] border-[#1C6048]/20">
+                <BentoIcon icon={<Sparkles size={28}/>} color="blue" className="bg-white shadow-sm" />
+                <h2 className="text-xl font-black text-[#1C6048] tracking-tight mb-3">Center of Excellence (CoE)</h2>
+                <p className="text-[13px] text-[#1E2F31] leading-relaxed font-medium">
+                  Opportunity to establish dominant market share by focusing on specialized services currently underserved by local Class C competitors (e.g., Mother & Child, Orthopedics, or Cardiology).
+                </p>
+             </BentoBox>
              
-             <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="p-5 border border-[#D8D8D8] rounded-xl bg-gradient-to-br from-white to-[#E8EFEA] shadow-sm">
-                  <h4 className="text-sm font-black text-[#1C6048] flex items-center gap-2 mb-3"><Sparkles size={16}/> Center of Excellence (CoE)</h4>
-                  <p className="text-xs text-[#4C4A4B] leading-relaxed font-medium">
-                    Opportunity to establish dominant market share by focusing on specialized services currently underserved by local Class C competitors (e.g., Mother & Child, Orthopedics, or Cardiology).
-                  </p>
-                </div>
-                
-                <div className="p-5 border border-[#D8D8D8] rounded-xl bg-gradient-to-br from-white to-[#EBEFEE] shadow-sm">
-                  <h4 className="text-sm font-black text-[#1E2F31] flex items-center gap-2 mb-3"><Users size={16}/> BPJS vs Private Mix</h4>
-                  <p className="text-xs text-[#4C4A4B] leading-relaxed font-medium">
-                    Strategic potential to balance stable, high-volume BPJS traffic to cover fixed overheads, while aggressively capturing high-margin private insurance and out-of-pocket patients.
-                  </p>
-                </div>
+             <BentoBox colSpan="md:col-span-6" className="bg-[#EFEBE7] border-transparent">
+                <BentoIcon icon={<Users size={28}/>} color="indigo" className="bg-white shadow-sm" />
+                <h2 className="text-xl font-black text-[#1E2F31] tracking-tight mb-3">BPJS vs Private Mix</h2>
+                <p className="text-[13px] text-[#4C4A4B] leading-relaxed font-medium">
+                  Strategic potential to balance stable, high-volume BPJS traffic to cover fixed overheads, while aggressively capturing high-margin private insurance and out-of-pocket patients.
+                </p>
+             </BentoBox>
 
-                <div className="p-5 border border-[#D8D8D8] rounded-xl bg-gradient-to-br from-white to-[#F9F8F6] shadow-sm md:col-span-2 border-l-4 border-l-[#9B8B70]">
-                  <h4 className="text-sm font-black text-[#9B8B70] flex items-center gap-2 mb-3"><Building2 size={16}/> Scalability</h4>
-                  <p className="text-xs text-[#4C4A4B] leading-relaxed font-medium">
-                    The {info?.totalBuilding || "13,000 Sqm"} GFA provides sufficient master-planning flexibility. Phase 1 development should focus on core capacities, with structural readiness for vertical or horizontal expansion as BOR stabilizes post-Year 4.
-                  </p>
+             <BentoBox colSpan="md:col-span-12" className="bg-[#1E2F31] text-white border-transparent">
+                <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
+                  <BentoIcon icon={<Building2 size={36}/>} color="emerald" className="bg-white/20 text-white w-20 h-20 rounded-[28px] mb-0 shrink-0" />
+                  <div>
+                    <h2 className="text-2xl font-black text-white tracking-tight mb-3">Long-Term Scalability</h2>
+                    <p className="text-[13px] text-white/80 leading-relaxed font-medium max-w-3xl">
+                      The {info?.totalBuilding || "13,000 Sqm"} GFA provides sufficient master-planning flexibility. Phase 1 development should focus on core capacities, with structural readiness for vertical or horizontal expansion as BOR stabilizes post-Year 4.
+                    </p>
+                  </div>
                 </div>
-             </div>
+             </BentoBox>
           </div>
         )}
     </div>
   );
 });
+
+// ==========================================
+// 5. MAJOR VIEW COMPONENTS (FINANCIAL ENGINES)
+// ==========================================
 
 const OpCoDashboardView = memo(({ data, assumptions, generateTeaser, isTeaserLoading, showTeaser, setShowTeaser, teaserContent, isPresenting }) => (
   <div className={isPresenting ? "grid grid-cols-1 lg:grid-cols-12 gap-6 items-start animate-in fade-in" : "space-y-6 animate-in fade-in"}>
@@ -1273,6 +1402,7 @@ const OpCoCascadeView = memo(({ data, assumptions }) => (
 const PropCoDashboardView = memo(({ data, assumptions, generateTeaser, isTeaserLoading, showTeaser, setShowTeaser, teaserContent, setTab, isPresenting }) => {
   const [chartMode, setChartMode] = useState('full');
   const chartData = chartMode === 'full' ? data.annualData : data.annualData.filter(d => d.isOperating);
+  const devYears = Math.max(1, Math.ceil((assumptions.devDurationMonths || 12) / 12));
 
   return (
   <div className={isPresenting ? "grid grid-cols-1 lg:grid-cols-12 gap-6 items-start animate-in fade-in" : "space-y-6 animate-in fade-in"}>
@@ -1381,8 +1511,8 @@ const PropCoDashboardView = memo(({ data, assumptions, generateTeaser, isTeaserL
 
       <div className={`space-y-6 ${isPresenting ? "lg:col-span-8" : ""}`}>
         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-            <MiniKPICard title="Equity Payback" value={`${formatNumber(data.metrics.payback, 1)} Yrs`} subtitle="From Yr 1" />
-            <MiniKPICard title="Op. Payback" value={`${formatNumber(data.metrics.operatingPayback, 1)} Yrs`} subtitle="From Operations" />
+            <MiniKPICard title="Equity Payback" value={`${formatNumber(data.metrics.payback > 0 ? Math.max(0, data.metrics.payback - devYears) : 0, 1)} Yrs`} subtitle="From Operations" />
+            <MiniKPICard title="Op. Payback" value={`${formatNumber(data.metrics.operatingPayback > 0 ? Math.max(0, data.metrics.operatingPayback - devYears) : 0, 1)} Yrs`} subtitle="From Operations" />
             <MiniKPICard title="Avg DSCR" value={`${formatNumber(data.metrics.avgDscr, 2)}x`} subtitle="Debt Coverage" />
             <MiniKPICard title="Min DSCR" value={`${formatNumber(data.metrics.minDscr, 2)}x`} subtitle="Lowest Coverage" />
             <MiniKPICard title="Cost per Bed" value={`${formatCurrency(data.metrics.costPerBed)}`} subtitle="Total / Beds" />
@@ -1805,9 +1935,9 @@ function AIAuditView({ aiInsights, isAiLoading, generateAIInsights, askQuery, se
 // 5. MAIN APP COMPONENT
 // ==========================================
 export default function App() {
-  const [activeGroup, setActiveGroup] = useState('financials'); // 'context' or 'financials'
+  const [activeGroup, setActiveGroup] = useState('context'); // 'context' or 'financials'
   const [activeCompany, setActiveCompany] = useState('opco'); 
-  const [activeTab, setActiveTab] = useState('dashboard'); 
+  const [activeTab, setActiveTab] = useState('study'); 
   const [isLockedOpCo, setIsLockedOpCo] = useState(true);
   const [isLockedPropCo, setIsLockedPropCo] = useState(true);
   const [isPresenting, setIsPresenting] = useState(false);
@@ -1818,7 +1948,7 @@ export default function App() {
   const [user, setUser] = useState(null);
 
   const [projectInfo, setProjectInfo] = useState({ 
-    name: "Vasanta Hospital Development Model", 
+    name: "Vasanta Hospital Development", 
     location: "Tangerang, Banten", 
     type: "General Hospital (Class B)", 
     totalLand: "12,643 Sqm", 
