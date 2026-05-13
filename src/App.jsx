@@ -12,7 +12,7 @@ import {
   AlertTriangle, Grid, Clock, Lock, Unlock, Info, MapPin, Building,
   Cloud, CloudOff, ChevronDown, GripHorizontal, Maximize, Minimize,
   BookOpen, Target, Search, FolderTree, BarChartHorizontal, Layers, Microscope,
-  Bed, Timer, Network
+  Bed, Timer, Network, Plane
 } from 'lucide-react';
 
 // ==========================================
@@ -102,6 +102,23 @@ const DEFAULT_PROPCO_ASSUMPTIONS = {
   depLifeInfra: 20, depMethodInfra: 'SL', depLifeMedEq: 10, depMethodMedEq: 'SL', depLifeFFE: 20, depMethodFFE: 'SL',
   includeTerminalValue: true, exitMethod: 'multiple', exitCapRate: 8.5, exitMultiple: 20, sellingCosts: 0,
 };
+
+const CANCER_DATA = [
+  { name: 'Breast', cases: 66271, fill: '#1C6048' },
+  { name: 'Lung', cases: 38904, fill: '#9B8B70' },
+  { name: 'Cervical', cases: 36964, fill: '#99B6AA' },
+  { name: 'Colorectal', cases: 35676, fill: '#EFEBE7' },
+  { name: 'Liver', cases: 23805, fill: '#D8D8D8' }
+];
+
+const INSURANCE_DATA = [
+  { year: '2021', value: 14.30 },
+  { year: '2022', value: 16.20 },
+  { year: '2023', value: 18.80 },
+  { year: '2024', value: 21.40 },
+  { year: '2025', value: 24.10 },
+  { year: '2026', value: 27.20 }
+];
 
 const apiKey = ""; 
 const callGemini = async (prompt, systemInstruction) => {
@@ -482,6 +499,113 @@ const AIMicroscopeIcon = memo(({ size = 14, className = "" }) => {
     </div>
   );
 });
+
+// Custom Brand SVGs based on exact user images
+// Strictly Line-Art (Fill: none) + High Detail + Scalable Viewbox
+const CustomBedIcon = memo(({ size = 24, className = "" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    {/* Heartbeat Monitor */}
+    <rect x="34" y="10" width="20" height="14" rx="2" />
+    <polyline points="36,17 40,17 43,12 46,22 49,17 52,17" />
+    {/* Bed Frame & Headboard */}
+    <line x1="10" y1="16" x2="10" y2="52" />
+    <line x1="10" y1="44" x2="56" y2="44" />
+    <line x1="56" y1="44" x2="56" y2="52" />
+    {/* Patient Head & Blanket */}
+    <circle cx="20" cy="26" r="5" />
+    <path d="M 10 34 L 26 34 C 30 26 34 26 38 34 L 56 34 L 56 44" />
+  </svg>
+));
+
+const CustomScaleIcon = memo(({ size = 24, className = "" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    {/* Base & Stand */}
+    <line x1="16" y1="56" x2="48" y2="56" />
+    <line x1="22" y1="50" x2="42" y2="50" />
+    <line x1="32" y1="50" x2="32" y2="10" />
+    <circle cx="32" cy="10" r="3" />
+    {/* Angled Crossbar */}
+    <line x1="10" y1="16" x2="54" y2="28" />
+    {/* Left Strings & Pan */}
+    <path d="M 10 16 L 4 36 L 16 36 Z" />
+    <path d="M 4 36 C 4 46 16 46 16 36" />
+    {/* Right Strings & Pan */}
+    <path d="M 54 28 L 48 48 L 60 48 Z" />
+    <path d="M 48 48 C 48 58 60 58 60 48" />
+  </svg>
+));
+
+const CustomKnotIcon = memo(({ size = 24, className = "" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    {/* Continuous overlapping path simulating a tangled thread/yarn with a loose end */}
+    <path d="M 12 52 C 16 44 24 36 20 28 C 16 16 32 8 44 16 C 56 24 52 44 40 52 C 28 60 12 48 16 32 C 20 16 40 12 52 24 C 64 36 56 56 44 60 C 32 64 20 52 24 40 C 28 28 44 28 48 40 C 52 52 36 60 28 52" />
+  </svg>
+));
+
+const CustomStethoscopeIcon = memo(({ size = 24, className = "" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    {/* Earpieces (Y-Split) */}
+    <path d="M 10 8 C 10 16 16 20 16 26" />
+    <path d="M 22 8 C 22 16 16 20 16 26" />
+    <line x1="7" y1="8" x2="13" y2="8" />
+    <line x1="19" y1="8" x2="25" y2="8" />
+    {/* Left Arm & U-Bend */}
+    <line x1="16" y1="26" x2="16" y2="44" />
+    <path d="M 16 44 C 16 60 48 60 48 44" />
+    {/* Right Arm & Chestpiece */}
+    <line x1="48" y1="44" x2="48" y2="26" />
+    <circle cx="48" cy="18" r="8" />
+    <circle cx="48" cy="18" r="3" />
+    {/* Medical Cross Circle (Shifted left to maintain clean gap) */}
+    <circle cx="28" cy="29" r="9" />
+    <line x1="28" y1="25" x2="28" y2="33" />
+    <line x1="24" y1="29" x2="32" y2="29" />
+  </svg>
+));
+
+const CustomPhysicianIcon = memo(({ size = 24, className = "" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    {/* Simple Head */}
+    <circle cx="32" cy="16" r="10" />
+    {/* Simple Body Outline */}
+    <path d="M 12 56 C 12 40 20 32 32 32 C 44 32 52 40 52 56" />
+    
+    {/* Asymmetric Stethoscope Drape */}
+    {/* Left Side: Earpieces hanging down */}
+    <path d="M 25 33.5 C 22 37 22 43 23 48" />
+    <path d="M 19 53 L 23 48 L 27 53" />
+    
+    {/* Right Side: Chestpiece hanging down */}
+    <path d="M 39 33.5 C 42 37 42 43 41 50" />
+    <circle cx="41" cy="53" r="3" />
+  </svg>
+));
+
+const CustomPopulationIcon = memo(({ size = 24, className = "" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    {/* Row 1 (Top) - 3 people */}
+    {[22, 32, 42].map(x => (
+        <g key={`r1-${x}`}>
+            <path d={`M ${x-5.5} 27 C ${x-5.5} 19 ${x+5.5} 19 ${x+5.5} 27`} fill="#EFEBE7" />
+            <circle cx={x} cy="14" r="3.5" fill="#EFEBE7" />
+        </g>
+    ))}
+    {/* Row 2 (Middle) - 4 people */}
+    {[17, 27, 37, 47].map(x => (
+        <g key={`r2-${x}`}>
+            <path d={`M ${x-5.5} 43 C ${x-5.5} 35 ${x+5.5} 35 ${x+5.5} 43`} fill="#EFEBE7" />
+            <circle cx={x} cy="30" r="3.5" fill="#EFEBE7" />
+        </g>
+    ))}
+    {/* Row 3 (Bottom) - 5 people */}
+    {[12, 22, 32, 42, 52].map(x => (
+        <g key={`r3-${x}`}>
+            <path d={`M ${x-5.5} 59 C ${x-5.5} 51 ${x+5.5} 51 ${x+5.5} 59`} fill="#EFEBE7" />
+            <circle cx={x} cy="46" r="3.5" fill="#EFEBE7" />
+        </g>
+    ))}
+  </svg>
+));
 
 const MarkdownRenderer = memo(({ content, className = "" }) => {
   const createMarkup = (text) => {
@@ -914,9 +1038,10 @@ const BentoIcon = memo(({ icon, color = "blue", className = "" }) => {
     indigo: 'bg-[#9B8B70]/10 text-[#9B8B70]',
     rose: 'bg-[#4C4A4B]/10 text-[#4C4A4B]',
     amber: 'bg-[#99B6AA]/20 text-[#1E2F31]',
+    transparent: 'bg-transparent',
   };
   return (
-    <div className={`w-14 h-14 rounded-[20px] flex items-center justify-center mb-5 shrink-0 ${bgColors[color]} ${className}`}>
+    <div className={`flex items-center justify-center mb-5 shrink-0 ${color !== 'transparent' ? 'w-14 h-14 rounded-[20px]' : ''} ${bgColors[color]} ${className}`}>
       {icon}
     </div>
   );
@@ -1051,7 +1176,7 @@ const StudyView = memo(({ isPresenting, info }) => {
                 <div className="flex flex-col md:flex-row items-center gap-8">
                    <div className="flex-1 text-center md:text-left">
                       <div className="flex items-center justify-center md:justify-start gap-4 mb-4">
-                        <BentoIcon icon={<Bed size={24}/>} color="emerald" className="mb-0 w-12 h-12 rounded-xl" />
+                        <BentoIcon icon={<CustomBedIcon size={80}/>} color="transparent" className="mb-0 text-[#1E2F31]" />
                         <h2 className="text-xl font-black text-[#1E2F31] tracking-tight">Hospital Beds Shortage</h2>
                       </div>
                       <p className="text-[13px] text-[#4C4A4B] leading-relaxed font-medium">
@@ -1063,7 +1188,7 @@ const StudyView = memo(({ isPresenting, info }) => {
                            <p className="text-5xl lg:text-6xl font-black text-[#1E2F31]">1.4</p>
                            <p className="text-[10px] font-bold text-[#4C4A4B] uppercase tracking-widest mt-3">Indonesia</p>
                        </div>
-                       <div className="text-3xl lg:text-4xl font-black text-[#D8D8D8]">&lt;</div>
+                       <div className="text-6xl lg:text-7xl font-black text-[#1E2F31] px-4 opacity-80">&lt;</div>
                        <div className="text-center">
                            <p className="text-5xl lg:text-6xl font-black text-[#1C6048]">4.5</p>
                            <p className="text-[10px] font-bold text-[#4C4A4B] uppercase tracking-widest mt-3">Average Standard</p>
@@ -1077,29 +1202,31 @@ const StudyView = memo(({ isPresenting, info }) => {
              {/* Card 1: Physician (Wide 8-Col) */}
              <BentoBox colSpan="md:col-span-12 lg:col-span-8" className="bg-[#EFEBE7] border-transparent">
                 <h3 className="font-black text-[15px] text-[#1E2F31] mb-6 text-center">Physician-to-Population Ratio</h3>
-                <div className="flex flex-col md:flex-row items-center justify-center gap-6 lg:gap-10 flex-1">
-                    <div className="flex items-center gap-3">
-                        <BentoIcon icon={<Stethoscope size={32}/>} color="blue" className="w-16 h-16 rounded-[20px] mb-0 bg-white shadow-sm text-[#1C6048]"/>
-                        <BentoIcon icon={<Users size={32}/>} color="emerald" className="w-16 h-16 rounded-[20px] mb-0 bg-[#1C6048] text-white shadow-sm"/>
-                    </div>
-                    <div className="text-center md:text-left">
-                        <div className="flex items-baseline gap-3 justify-center md:justify-start">
-                            <p className="text-5xl font-black text-[#1E2F31]">1</p>
-                            <p className="text-3xl font-black text-[#1E2F31]">:</p>
-                            <p className="text-5xl font-black text-[#1E2F31]">2000</p>
+                <div className="flex flex-col md:flex-row items-center justify-center gap-6 lg:gap-16 flex-1">
+                    <div className="flex items-end justify-center gap-6">
+                        <div className="flex flex-col items-center">
+                            <BentoIcon icon={<CustomPhysicianIcon size={80}/>} color="transparent" className="mb-0 text-[#1C6048]"/>
+                            <p className="text-5xl font-black text-[#1E2F31] mt-2">1</p>
                         </div>
-                        <p className="text-[11px] font-bold text-[#1E2F31] mt-2 uppercase tracking-widest">WHO Standards 1: 1000</p>
+                        <p className="text-4xl font-black text-[#1E2F31] pb-1 opacity-80">:</p>
+                        <div className="flex flex-col items-center">
+                            <BentoIcon icon={<CustomPopulationIcon size={80}/>} color="transparent" className="mb-0 text-[#1C6048]"/>
+                            <p className="text-5xl font-black text-[#1E2F31] mt-2">2000</p>
+                        </div>
                     </div>
-                    <p className="text-xs text-[#4C4A4B] leading-relaxed font-medium max-w-[200px] text-center md:text-left border-t md:border-t-0 md:border-l border-[#D8D8D8] pt-4 md:pt-0 md:pl-6">
-                        Operating at <strong className="text-[#1E2F31]">50%</strong> physician capacity.<br/><br/>A chronic shortage demands <strong className="text-[#1E2F31]">digital-first</strong> clinical support.
-                    </p>
+                    <div className="text-center md:text-left flex flex-col items-center md:items-start border-t md:border-t-0 md:border-l border-[#D8D8D8] pt-6 md:pt-0 md:pl-10">
+                        <p className="text-[10px] font-bold text-[#1E2F31] uppercase tracking-widest mb-4 bg-white/60 px-3 py-1.5 rounded-lg border border-[#D8D8D8]">WHO Standards 1: 1000</p>
+                        <p className="text-xs text-[#4C4A4B] leading-relaxed font-medium max-w-[200px]">
+                            Operating at <strong className="text-[#1E2F31]">50%</strong> physician capacity.<br/><br/>A chronic shortage demands <strong className="text-[#1E2F31]">digital-first</strong> clinical support.
+                        </p>
+                    </div>
                 </div>
              </BentoBox>
              
              {/* Card 2: Quality Mismatch (Square 4-Col) */}
              <BentoBox colSpan="md:col-span-12 lg:col-span-4" className="bg-[#F9F8F6] border-[#D8D8D8] items-center text-center">
                 <h3 className="font-black text-[15px] text-[#1E2F31] mb-6">Price vs Quality Mismatch</h3>
-                <BentoIcon icon={<Scale size={40}/>} color="emerald" className="w-24 h-24 rounded-[24px] mb-6 bg-[#E8EFEA] border border-[#1C6048]/20 text-[#1C6048]"/>
+                <BentoIcon icon={<CustomScaleIcon size={100}/>} color="transparent" className="mb-6 text-[#1C6048]"/>
                 <p className="text-xs text-[#4C4A4B] leading-relaxed font-medium mt-auto">
                     High out-of-pocket costs <strong className="text-[#1E2F31]">failing</strong> to deliver a <strong className="text-[#1E2F31]">Tier-A</strong> patient experience.
                 </p>
@@ -1108,7 +1235,7 @@ const StudyView = memo(({ isPresenting, info }) => {
              {/* Card 3: Fragmented (Square 3-Col) */}
              <BentoBox colSpan="md:col-span-6 lg:col-span-3" className="bg-[#F9F8F6] border-[#D8D8D8] items-center text-center">
                 <h3 className="font-black text-[15px] text-[#1E2F31] mb-6">Fragmented Operation</h3>
-                <BentoIcon icon={<Network size={36}/>} color="blue" className="w-20 h-20 rounded-[20px] mb-6 bg-white shadow-sm border border-[#D8D8D8] text-[#1C6048]"/>
+                <BentoIcon icon={<CustomKnotIcon size={100}/>} color="transparent" className="mb-6 text-[#1C6048]"/>
                 <p className="text-[11px] text-[#4C4A4B] leading-relaxed font-medium mt-auto">
                     <strong className="text-[#1E2F31]">Inefficient</strong> unified digital backbone, error-prone, and disconnected operations.
                 </p>
@@ -1120,7 +1247,7 @@ const StudyView = memo(({ isPresenting, info }) => {
                     <h3 className="font-black text-[15px] text-[#1E2F31] mb-6 w-full text-center md:text-left">Administrative Bottleneck per Patient Visit</h3>
                     <div className="flex flex-col md:flex-row items-center justify-center gap-6 lg:gap-8 flex-1 w-full">
                         <div className="flex flex-col items-center justify-center shrink-0">
-                            <BentoIcon icon={<Timer size={40}/>} color="indigo" className="w-24 h-24 rounded-[24px] mb-4 bg-[#F9F8F6] border border-[#D8D8D8] text-[#1C6048]"/>
+                            <BentoIcon icon={<Timer size={100} strokeWidth={1.5}/>} color="transparent" className="mb-4 text-[#1C6048]"/>
                             <p className="text-4xl font-black text-[#1E2F31] whitespace-nowrap">&gt; 2 Hours</p>
                         </div>
                         <p className="text-xs text-[#4C4A4B] leading-relaxed font-medium max-w-[260px] border-t md:border-t-0 md:border-l border-[#EFEBE7] pt-4 md:pt-0 md:pl-6 text-center md:text-left">
@@ -1134,7 +1261,7 @@ const StudyView = memo(({ isPresenting, info }) => {
              {/* Card 5: Preventative (Square 3-Col) */}
              <BentoBox colSpan="md:col-span-6 lg:col-span-3" className="bg-[#EFEBE7] border-transparent items-center text-center">
                 <h3 className="font-black text-[15px] text-[#1E2F31] mb-6">Lack of Preventative Screening</h3>
-                <BentoIcon icon={<Stethoscope size={36}/>} color="rose" className="w-20 h-20 rounded-[20px] mb-6 bg-[#F9F8F6] shadow-sm border border-[#D8D8D8] text-[#9B8B70]"/>
+                <BentoIcon icon={<CustomStethoscopeIcon size={100}/>} color="transparent" className="mb-6 text-[#9B8B70]"/>
                 <p className="text-[11px] text-[#4C4A4B] leading-relaxed font-medium mt-auto">
                     Only <strong className="text-[#1E2F31] text-sm">17.44%</strong> of Indonesian underwent preventive health screenings regularly.
                 </p>
@@ -1203,34 +1330,86 @@ const StudyView = memo(({ isPresenting, info }) => {
         )}
 
         {activeMiniTab === 'opportunities' && (
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 animate-in fade-in zoom-in-95 duration-300">
-             <BentoBox colSpan="md:col-span-6" className="bg-[#E8EFEA] border-[#1C6048]/20">
-                <BentoIcon icon={<Sparkles size={28}/>} color="blue" className="bg-white shadow-sm" />
-                <h2 className="text-xl font-black text-[#1C6048] tracking-tight mb-3">Center of Excellence (CoE)</h2>
-                <p className="text-[13px] text-[#1E2F31] leading-relaxed font-medium">
-                  Opportunity to establish dominant market share by focusing on specialized services currently underserved by local Class C competitors (e.g., Mother & Child, Orthopedics, or Cardiology).
-                </p>
-             </BentoBox>
+          <div className="bg-white rounded-2xl shadow-sm border border-[#D8D8D8] p-8 lg:p-12 animate-in fade-in zoom-in-95 duration-300">
              
-             <BentoBox colSpan="md:col-span-6" className="bg-[#EFEBE7] border-transparent">
-                <BentoIcon icon={<Users size={28}/>} color="indigo" className="bg-white shadow-sm" />
-                <h2 className="text-xl font-black text-[#1E2F31] tracking-tight mb-3">BPJS vs Private Mix</h2>
-                <p className="text-[13px] text-[#4C4A4B] leading-relaxed font-medium">
-                  Strategic potential to balance stable, high-volume BPJS traffic to cover fixed overheads, while aggressively capturing high-margin private insurance and out-of-pocket patients.
+             {/* Slide Header */}
+             <div className="mb-12 border-b border-[#D8D8D8] pb-8">
+                <h2 className="text-3xl lg:text-4xl font-black text-[#4C4A4B] tracking-tight uppercase leading-tight">
+                    Capturing Multi-Billion Dollar <span className="font-light text-[#9B8B70]">Medical Tourism</span><br />
+                    <span className="font-light text-[#9B8B70]">Flight</span>
+                </h2>
+                <p className="text-[14px] text-[#4C4A4B] leading-relaxed font-medium mt-4 max-w-4xl">
+                  Indonesia's escalating oncology burden and rising private health insurance penetration are driving a massive, addressable capital outflow to regional competitors
                 </p>
-             </BentoBox>
+             </div>
 
-             <BentoBox colSpan="md:col-span-12" className="bg-[#1E2F31] text-white border-transparent">
-                <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
-                  <BentoIcon icon={<Building2 size={36}/>} color="emerald" className="bg-white/20 text-white w-20 h-20 rounded-[28px] mb-0 shrink-0" />
-                  <div>
-                    <h2 className="text-2xl font-black text-white tracking-tight mb-3">Long-Term Scalability</h2>
-                    <p className="text-[13px] text-white/80 leading-relaxed font-medium max-w-3xl">
-                      The {info?.totalBuilding || "13,000 Sqm"} GFA provides sufficient master-planning flexibility. Phase 1 development should focus on core capacities, with structural readiness for vertical or horizontal expansion as BOR stabilizes post-Year 4.
+             {/* 3 Column Pitch Layout */}
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-10 lg:gap-16">
+                
+                {/* Column 1: Cancer Cases */}
+                <div className="flex flex-col h-full">
+                    <h3 className="text-[13px] text-center text-[#4C4A4B] font-medium mb-10">Indonesia Annual Cancer Cases</h3>
+                    <div className="h-48 w-full mb-8">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={CANCER_DATA} margin={{ top: 20, right: 0, left: 0, bottom: 0 }}>
+                          <XAxis dataKey="name" axisLine={true} stroke="#EFEBE7" tickLine={false} tick={{ fontSize: 10, fill: '#4C4A4B' }} dy={10} />
+                          <Tooltip cursor={{fill: '#F9F8F6'}} contentStyle={{ borderRadius: '12px', border: '1px solid #D8D8D8', fontSize: '12px', color: '#1E2F31' }} formatter={(val) => new Intl.NumberFormat('en-US').format(val)} />
+                          <Bar dataKey="cases" radius={[2, 2, 0, 0]} barSize={30}>
+                            {CANCER_DATA.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.fill} />
+                            ))}
+                            <recharts-label position="top" fill="#4C4A4B" fontSize={10} formatter={(val) => new Intl.NumberFormat('en-US').format(val)} />
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <p className="text-[11px] text-[#4C4A4B] mt-auto text-left leading-relaxed">
+                      Breast, cervical, lung, colorectal, and liver cancers are the most frequent cases in Indonesia. Together, these top 5 cancers account for <strong className="font-bold">50% of total 400,000+</strong> annual oncology burden.
                     </p>
-                  </div>
                 </div>
-             </BentoBox>
+
+                {/* Column 2: Insurance Growth */}
+                <div className="flex flex-col h-full">
+                    <h3 className="text-[13px] text-center text-[#4C4A4B] font-medium mb-1">Commercial Insurance Growth</h3>
+                    <p className="text-[9px] text-center text-[#9B8B70] mb-8">(in IDR Trillions)</p>
+                    
+                    <div className="h-48 w-full mb-8 relative">
+                      <div className="absolute top-8 left-1/4 transform -rotate-[22deg] flex flex-col items-center z-10">
+                         <span className="text-[11px] font-bold text-[#1C6048] tracking-widest mb-1">CAGR 13.72%</span>
+                         <svg width="90" height="12" viewBox="0 0 90 12" fill="none" className="text-[#1C6048]">
+                           <path d="M2 6H88M88 6L82 2M88 6L82 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                         </svg>
+                      </div>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={INSURANCE_DATA} margin={{ top: 40, right: 20, left: 20, bottom: 0 }}>
+                          <XAxis dataKey="year" axisLine={true} stroke="#EFEBE7" tickLine={false} tick={{ fontSize: 10, fill: '#4C4A4B' }} dy={10} />
+                          <YAxis hide domain={['dataMin - 2', 'dataMax + 2']} />
+                          <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #D8D8D8', fontSize: '12px', color: '#1E2F31' }} formatter={(val) => val.toFixed(2) + "T IDR"} />
+                          <Line type="monotone" dataKey="value" stroke="#99B6AA" strokeWidth={3} dot={{ r: 4, strokeWidth: 2, fill: '#fff', stroke: '#99B6AA' }} label={{ position: 'top', fill: '#4C4A4B', fontSize: 10, dy: -10, formatter: (val) => val.toFixed(2) }} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                    
+                    <p className="text-[11px] text-[#4C4A4B] mt-auto text-left leading-relaxed">
+                      Double-digit growth in commercial health insurance for <strong className="font-bold">'Socio-Economic Status (SES) A'</strong> demographics
+                    </p>
+                </div>
+
+                {/* Column 3: Capital Outflow */}
+                <div className="flex flex-col h-full items-center justify-start pt-2">
+                    <h3 className="text-[13px] text-center text-[#4C4A4B] font-medium mb-12">Annual Capital Outflow</h3>
+                    
+                    <Plane size={64} className="text-[#1C6048] mb-4 transform -rotate-[2deg]" strokeWidth={1.5} />
+                    <div className="w-20 h-[3px] bg-[#1C6048] mb-12"></div>
+                    
+                    <p className="text-4xl lg:text-5xl font-black text-[#4C4A4B] tracking-tighter mb-8">$11.5 Billion</p>
+                    
+                    <p className="text-[11px] text-[#4C4A4B] italic text-center leading-relaxed px-4 mt-auto">
+                      to Malaysia, Singapore, Japan,<br/>US, Germany, and others
+                    </p>
+                </div>
+
+             </div>
           </div>
         )}
     </div>
