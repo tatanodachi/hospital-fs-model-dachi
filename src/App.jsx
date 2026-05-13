@@ -11,7 +11,7 @@ import {
   PieChart as PieChartIcon, Map, Landmark, ArrowRightLeft, X, Download, 
   AlertTriangle, Grid, Clock, Lock, Unlock, Info, MapPin, Building,
   Cloud, CloudOff, ChevronDown, GripHorizontal, Maximize, Minimize,
-  BookOpen, Target, Search, FolderTree, BarChartHorizontal, Layers
+  BookOpen, Target, Search, FolderTree, BarChartHorizontal, Layers, Microscope
 } from 'lucide-react';
 
 // ==========================================
@@ -85,9 +85,9 @@ const DEFAULT_OPCO_ASSUMPTIONS = {
   ipRevenue: 27, opRevenue: 0.5, priceIncYears1_6: 7, priceIncYears7_plus: 5,
   monthlyStaffCost: 3.8, staffInf: 4, ipMedSupply: 4.5, opMedSupply: 0.2, medSupplyInf: 3,
   adminExpRate: 2, utilExpRate: 5, mktgExpRate: 2, operatorFeeRate: 2.5,
-  insuranceMonthly: 52.3, docFeeIp: 16, docFeeOp: 24, rentTier1Rate: 25, rentTier2Rate: 45, rentTier3Rate: 65, rentTier1Limit: 1.8, rentTier2Limit: 2.2, corporateTax: 22,
+  insuranceMonthly: 52.3, docFeeIp: 16, docFeeOp: 24, rentTier1Rate: 25, rentTier2Rate: 25, rentTier3Rate: 25, rentTier1Limit: 1.8, rentTier2Limit: 2.2, corporateTax: 22,
   partnerAEquity: 41.87, partnerBEquity: 40.23, jvaOpex: 2.5, commOpex: 15, workingCapitalOpex: 64.6,
-  sharingPercentA: 51.00, equitySplitY1: 100, discountRate: 12
+  sharingPercentA: 51.00, equitySplitY1: 100, discountRate: 12, holdCoDiscountRate: 11
 };
 
 const DEFAULT_PROPCO_ASSUMPTIONS = {
@@ -96,10 +96,10 @@ const DEFAULT_PROPCO_ASSUMPTIONS = {
   capexInfraQty: 8310, capexInfraPrice: 0.7, includeFFE: true, capexFFEQty: 1, capexFFEPrice: 26000, 
   capexSharingDevQty: 5361, capexSharingDevPrice: 0.8, capexContingencyPct: 2, capexConsultantPct: 2.5,
   capexLicensePct: 1.5, capexCarPct: 0.15, capexVat: 11, devDurationMonths: 24, constructionOpexMonthly: 0.5, 
-  opOverheadMonthly: 0.2, opOverheadInc: 4, ffeReservePct: 2, includeFinancing: true, ltv: 65, interestRate: 8.25, loanTenor: 15, ioGracePeriodYears: 3,
+  opOverheadMonthly: 0.2, opOverheadInc: 4, ffeReservePct: 2, includeFinancing: false, ltv: 65, interestRate: 8.25, loanTenor: 15, ioGracePeriodYears: 3,
   maintRate: 0, propTaxRate: 0, corporateTax: 22, discountRate: 11, depLifeBuilding: 20, depMethodBuilding: 'SL',
   depLifeInfra: 20, depMethodInfra: 'SL', depLifeMedEq: 10, depMethodMedEq: 'SL', depLifeFFE: 20, depMethodFFE: 'SL',
-  includeTerminalValue: false, exitMethod: 'multiple', exitCapRate: 8.5, exitMultiple: 20, sellingCosts: 0,
+  includeTerminalValue: true, exitMethod: 'multiple', exitCapRate: 8.5, exitMultiple: 20, sellingCosts: 0,
 };
 
 const apiKey = ""; 
@@ -182,7 +182,10 @@ const runOpCoEngine = (assumptions) => {
       
       const fixedTotal = staffCost + (assumptions.insuranceMonthly * 12 / 1000);
       const varRate = totalRev > 0 ? (totalMedSupp + totalDocFee + (assumptions.adminExpRate + assumptions.utilExpRate + assumptions.mktgExpRate + assumptions.operatorFeeRate) / 100 * totalRev) / totalRev : 0;
-      const breakEvenRev = (1 - varRate - (ebitdar > 0 ? rentRate/100 : 0)) > 0 ? fixedTotal / (1 - varRate - (ebitdar > 0 ? rentRate/100 : 0)) : 0;
+      
+      // FIX: Rent is a % of EBITDAR. Therefore, EBITDA is 0 exactly when EBITDAR is 0. 
+      // Breakeven occurs when the core Contribution Margin strictly covers Fixed Costs.
+      const breakEvenRev = (1 - varRate) > 0 ? fixedTotal / (1 - varRate) : 0;
       const breakEvenBor = totalRev > 0 ? (breakEvenRev / totalRev) * bor : 0;
 
       let prevCumNI = cumulativeNetIncome;
@@ -445,7 +448,7 @@ const runConsolidatedEngine = (opCoData, propCoData, opCoAssumptions) => {
         metrics: {
             totalEquity: totalConsolidatedEquity,
             irr: calculateIRR(consolidatedCfs),
-            npv: calculateNPV(consolidatedCfs, opCoAssumptions.discountRate),
+            npv: calculateNPV(consolidatedCfs, opCoAssumptions.holdCoDiscountRate),
             payback: calculatePayback(consolidatedCfs),
             moic: totalConsolidatedEquity > 0 ? consolidatedCfs.reduce((acc, val) => val > 0 ? acc + val : acc, 0) / totalConsolidatedEquity : 0
         },
@@ -460,6 +463,24 @@ const runConsolidatedEngine = (opCoData, propCoData, opCoAssumptions) => {
 // ==========================================
 // 3. UI ATOMIC COMPONENTS
 // ==========================================
+
+const AIMicroscopeIcon = memo(({ size = 14, className = "" }) => {
+  const badgeFontSize = Math.max(7, size * 0.35);
+  const rightOffset = size > 24 ? '-right-3' : '-right-2';
+  const topOffset = size > 24 ? '-top-2' : '-top-1';
+  
+  return (
+    <div className={`relative inline-flex items-center justify-center ${className}`}>
+      <Microscope size={size} />
+      <span 
+        className={`absolute ${topOffset} ${rightOffset} bg-gradient-to-br from-[#1C6048] to-[#1E2F31] text-white font-black px-1 rounded-sm shadow-sm leading-none border border-white/50`} 
+        style={{ fontSize: badgeFontSize }}
+      >
+        AI
+      </span>
+    </div>
+  );
+});
 
 const MarkdownRenderer = memo(({ content, className = "" }) => {
   const createMarkup = (text) => {
@@ -476,8 +497,16 @@ const MarkdownRenderer = memo(({ content, className = "" }) => {
   return <div className={className} dangerouslySetInnerHTML={createMarkup(content)} />;
 });
 
-const NavButton = memo(({ active, onClick, icon, label }) => (
-  <button onClick={onClick} className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${active ? 'bg-white text-[#1E2F31] shadow-md border border-[#D8D8D8]' : 'text-[#4C4A4B] hover:text-[#1E2F31]'}`}>
+const NavButton = memo(({ active, onClick, icon, label, disabled }) => (
+  <button 
+    onClick={disabled ? undefined : onClick} 
+    disabled={disabled}
+    className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+      disabled ? 'opacity-40 cursor-not-allowed text-[#4C4A4B]' : 
+      active ? 'bg-white text-[#1E2F31] shadow-md border border-[#D8D8D8]' : 
+      'text-[#4C4A4B] hover:text-[#1E2F31]'
+    }`}
+  >
     {icon} <span className="hidden sm:inline">{label}</span>
   </button>
 ));
@@ -1111,8 +1140,8 @@ const OpCoDashboardView = memo(({ data, assumptions, generateTeaser, isTeaserLoa
         </div>
 
         <div className={`grid grid-cols-1 ${isPresenting ? 'lg:grid-cols-1' : 'lg:grid-cols-2'} gap-6`}>
-          <PartnerReturnCard name="Partner A (51%)" metrics={data.partnerA} equity={assumptions.partnerAEquity} share={assumptions.sharingPercentA} color="blue" />
-          <PartnerReturnCard name="Partner B (49%)" metrics={data.partnerB} equity={assumptions.partnerBEquity} share={100 - assumptions.sharingPercentA} color="indigo" />
+          <PartnerReturnCard name={`Strategic Partner (${assumptions.sharingPercentA}%)`} metrics={data.partnerA} equity={assumptions.partnerAEquity} share={assumptions.sharingPercentA} color="blue" />
+          <PartnerReturnCard name={`Vasanta (${100 - assumptions.sharingPercentA}%)`} metrics={data.partnerB} equity={assumptions.partnerBEquity} share={100 - assumptions.sharingPercentA} color="indigo" />
         </div>
       </div>
 
@@ -1127,7 +1156,7 @@ const OpCoDashboardView = memo(({ data, assumptions, generateTeaser, isTeaserLoa
 
         <div className="bg-white p-5 lg:p-6 rounded-2xl shadow-sm border border-[#D8D8D8]">
           <h3 className="font-bold text-[#1E2F31] mb-6 flex items-center gap-2"><BarChart3 size={18} className="text-[#1C6048]"/> Operating Cash Flow Trajectory</h3>
-          <div className={isPresenting ? "h-[450px]" : "h-80"}>
+          <div className={isPresenting ? "h-[300px]" : "h-72"}>
               <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={data.annualData.filter(d => d.isOperating)}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#D8D8D8" />
@@ -1145,6 +1174,43 @@ const OpCoDashboardView = memo(({ data, assumptions, generateTeaser, isTeaserLoa
               </ResponsiveContainer>
           </div>
         </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-white p-5 lg:p-6 rounded-2xl shadow-sm border border-[#D8D8D8]">
+              <h3 className="font-bold text-[#1E2F31] mb-6 flex items-center gap-2"><Activity size={18} className="text-[#1E2F31]"/> Cash-on-Cash Trajectory</h3>
+              <div className="h-56">
+                  <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={data.annualData.filter(d => d.isOperating)}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#D8D8D8" />
+                      <XAxis dataKey="year" tick={{fontSize: 10, fill: '#4C4A4B'}} axisLine={false} />
+                      <YAxis tick={{fontSize: 10, fill: '#4C4A4B'}} axisLine={false} tickFormatter={(val) => `${val}%`} />
+                      <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #D8D8D8' }} formatter={(val) => formatNumber(val, 1) + "%"} />
+                      <Legend iconType="circle" wrapperStyle={{fontSize: '11px', paddingTop: '20px'}} />
+                      <Line type="monotone" dataKey="pA_Yield" name="Strategic Ptnr Yield" stroke="#1C6048" strokeWidth={3} dot={{ r: 3, strokeWidth: 2 }} />
+                      <Line type="monotone" dataKey="roe" name="Project ROE" stroke="#9B8B70" strokeWidth={3} dot={{ r: 3, strokeWidth: 2 }} />
+                  </LineChart>
+                  </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="bg-white p-5 lg:p-6 rounded-2xl shadow-sm border border-[#D8D8D8]">
+              <h3 className="font-bold text-[#1E2F31] mb-6 flex items-center gap-2"><Target size={18} className="text-[#99B6AA]"/> Breakeven Audit</h3>
+              <div className="h-56">
+                  <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={data.annualData.filter(d => d.isOperating)}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#D8D8D8" />
+                      <XAxis dataKey="year" tick={{fontSize: 10, fill: '#4C4A4B'}} axisLine={false} />
+                      <YAxis tick={{fontSize: 10, fill: '#4C4A4B'}} axisLine={false} tickFormatter={(val) => `${val}%`} />
+                      <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #D8D8D8' }} formatter={(val) => formatNumber(val, 1) + "%"} />
+                      <Legend iconType="circle" wrapperStyle={{fontSize: '11px', paddingTop: '20px'}} />
+                      <Bar dataKey="breakEvenBor" name="Breakeven BOR required" fill="#D8D8D8" radius={[4, 4, 0, 0]} barSize={30} />
+                      <Line type="monotone" dataKey="bor" name="Actual Projected BOR" stroke="#1E2F31" strokeWidth={3} dot={{ r: 3, strokeWidth: 2 }} />
+                  </ComposedChart>
+                  </ResponsiveContainer>
+              </div>
+            </div>
+        </div>
+
       </div>
   </div>
 ));
@@ -1204,7 +1270,11 @@ const OpCoCascadeView = memo(({ data, assumptions }) => (
   </div>
 ));
 
-const PropCoDashboardView = memo(({ data, assumptions, generateTeaser, isTeaserLoading, showTeaser, setShowTeaser, teaserContent, setTab, isPresenting }) => (
+const PropCoDashboardView = memo(({ data, assumptions, generateTeaser, isTeaserLoading, showTeaser, setShowTeaser, teaserContent, setTab, isPresenting }) => {
+  const [chartMode, setChartMode] = useState('full');
+  const chartData = chartMode === 'full' ? data.annualData : data.annualData.filter(d => d.isOperating);
+
+  return (
   <div className={isPresenting ? "grid grid-cols-1 lg:grid-cols-12 gap-6 items-start animate-in fade-in" : "space-y-6 animate-in fade-in"}>
       <div className={`space-y-6 ${isPresenting ? "lg:col-span-4" : ""}`}>
         <div className="flex justify-between items-center bg-white p-3 rounded-2xl shadow-sm border border-[#D8D8D8]">
@@ -1222,41 +1292,87 @@ const PropCoDashboardView = memo(({ data, assumptions, generateTeaser, isTeaserL
           </div>
         )}
 
-        <div className={`grid grid-cols-2 ${isPresenting ? 'lg:grid-cols-2' : 'lg:grid-cols-4'} gap-4`}>
-          <KPICard title="Levered NPV" value={formatCurrency(data.metrics.npv)} icon={<TrendingUp size={18} />} color="indigo" subtitle={`@${String(assumptions.discountRate)}% Disc Rate`} />
-          <KPICard title="Levered IRR" value={`${formatNumber((data.metrics.irr || 0) * 100, 2)}%`} icon={<Activity size={18} />} color="indigo" subtitle="Compounded Return" />
-          <KPICard title="Unlevered IRR" value={`${formatNumber((data.metrics.unleveredIrr || 0) * 100, 2)}%`} icon={<Building2 size={18} />} color="emerald" subtitle="Project Level" />
-          <KPICard title="Avg Cash Yield" value={`${formatNumber(data.metrics.avgYield, 1)}%`} icon={<Coins size={18} />} color="blue" subtitle="FCFE / Equity" />
+        <div className={`grid grid-cols-1 md:grid-cols-2 ${isPresenting ? 'lg:grid-cols-2' : 'lg:grid-cols-4'} gap-4`}>
+          <DualKPICard title1="Levered IRR" value1={`${formatNumber((data.metrics.irr || 0) * 100, 2)}%`} color1="indigo" title2="Equity NPV" value2={formatCurrency(data.metrics.npv)} color2="emerald" icon={<Activity size={18} />} />
+          <DualKPICard title1="Unlevered IRR" value1={`${formatNumber((data.metrics.unleveredIrr || 0) * 100, 2)}%`} color1="emerald" title2="Project NPV" value2={formatCurrency(data.metrics.unleveredNpv)} color2="blue" icon={<Building2 size={18} />} />
+          <DualKPICard title1="IRR (ex-Land)" value1={`${formatNumber((data.metrics.irrExLand || 0) * 100, 2)}%`} color1="blue" title2="NPV (ex-Land)" value2={formatCurrency(data.metrics.npvExLand)} color2="teal" icon={<TrendingUp size={18} />} />
+          <DualKPICard title1="Avg Cash Yield" value1={`${formatNumber(data.metrics.avgYield, 1)}%`} color1="teal" title2="YOC (ex-Land)" value2={`${formatNumber((data.metrics.yocExLand || 0) * 100, 1)}%`} color2="amber" icon={<Coins size={18} />} />
         </div>
 
         <div className="bg-white p-5 lg:p-6 rounded-2xl shadow-sm border border-[#D8D8D8]">
             <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-bold text-[#1E2F31] flex items-center gap-2"><DollarSign size={20} className="text-[#1C6048]" /> Capital Structure</h3>
+                <h3 className="text-lg font-bold text-[#1E2F31] flex items-center gap-2"><DollarSign size={20} className="text-[#1C6048]" /> Sources & Uses of Funds</h3>
                 <button onClick={() => setTab('assumptions')} className="text-[10px] bg-[#EFEBE7] hover:bg-[#D8D8D8] text-[#4C4A4B] font-bold px-2 py-1 rounded transition-colors uppercase">Edit Settings</button>
             </div>
-            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                <div className={`w-full relative flex justify-center ${isPresenting ? "h-64" : "h-40"}`}>
-                    <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                            <Pie data={[{name: 'Equity', value: data.metrics.totalEquity}, {name: 'Bank Loan', value: data.metrics.totalDebt}]} cx="50%" cy="50%" innerRadius={isPresenting ? 60 : 40} outerRadius={isPresenting ? 90 : 70} paddingAngle={2} dataKey="value">
-                                { [0,1].map((entry, index) => <Cell key={`cell-${index}`} fill={index === 0 ? '#1C6048' : '#D8D8D8'} />) }
-                            </Pie>
-                            <Tooltip formatter={(val) => formatCurrency(val)} />
-                        </PieChart>
-                    </ResponsiveContainer>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                        <span className="text-[10px] font-bold text-[#4C4A4B] uppercase">Total Capex</span>
-                        <span className="text-sm font-black text-[#1E2F31]">{formatNumber(data.metrics.totalCapex, 0)}B</span>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Sources Pie */}
+                <div>
+                    <h4 className="text-center text-[10px] font-bold text-[#4C4A4B] uppercase tracking-widest mb-2">Sources</h4>
+                    <div className={`w-full relative flex justify-center ${isPresenting ? "h-40" : "h-36"}`}>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie data={[{name: 'Equity', value: data.metrics.totalEquity}, {name: 'Bank Loan', value: data.metrics.totalDebt}]} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={2} dataKey="value">
+                                    { [0,1].map((entry, index) => <Cell key={`cell-src-${index}`} fill={index === 0 ? '#1C6048' : '#D8D8D8'} />) }
+                                </Pie>
+                                <Tooltip formatter={(val) => formatCurrency(val)} />
+                            </PieChart>
+                        </ResponsiveContainer>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                            <span className="text-sm font-black text-[#1E2F31]">{formatNumber(data.metrics.totalCapex, 0)}B</span>
+                        </div>
+                    </div>
+                    <div className="w-full grid grid-cols-2 gap-2 mt-4 text-center">
+                        <div className="bg-[#EFEBE7] p-2 rounded border border-[#D8D8D8]">
+                            <p className="text-[9px] font-bold uppercase text-[#4C4A4B] mb-1">Equity</p>
+                            <p className="font-black text-[#1E2F31]">{formatCurrency(data.metrics.totalEquity)}</p>
+                        </div>
+                        <div className="bg-[#D8D8D8]/30 p-2 rounded border border-[#D8D8D8]">
+                            <p className="text-[9px] font-bold uppercase text-[#4C4A4B] mb-1">Loan</p>
+                            <p className="font-black text-[#1E2F31]">{formatCurrency(data.metrics.totalDebt)}</p>
+                        </div>
                     </div>
                 </div>
-                <div className="w-full grid grid-cols-2 gap-2 mt-4 text-center">
-                    <div className="bg-[#EFEBE7] p-2 rounded border border-[#D8D8D8]">
-                        <p className="text-[9px] font-bold uppercase text-[#4C4A4B] mb-1">Equity ({(100 - (assumptions.includeFinancing ? assumptions.ltv : 0)).toFixed(0)}%)</p>
-                        <p className="font-black text-[#1E2F31]">{formatCurrency(data.metrics.totalEquity)}</p>
-                    </div>
-                    <div className="bg-[#D8D8D8]/30 p-2 rounded border border-[#D8D8D8]">
-                        <p className="text-[9px] font-bold uppercase text-[#4C4A4B] mb-1">Loan ({(assumptions.includeFinancing ? assumptions.ltv : 0).toFixed(0)}%)</p>
-                        <p className="font-black text-[#1E2F31]">{formatCurrency(data.metrics.totalDebt)}</p>
+
+                {/* Uses Expandable Table */}
+                <div>
+                    <h4 className="text-center text-[10px] font-bold text-[#4C4A4B] uppercase tracking-widest mb-4">Uses Breakdown</h4>
+                    <div className="bg-[#F9F8F6] p-2 rounded-xl border border-[#D8D8D8]">
+                        <ExpandableCapexRow 
+                            icon={<Map size={16} className="text-[#9B8B70]" />} 
+                            title="Land Acquisition" 
+                            amount={data.capexDetails.landCost} 
+                            totalCapex={data.metrics.totalCapex} 
+                        />
+                        <ExpandableCapexRow 
+                            icon={<Building2 size={16} className="text-[#1E2F31]" />} 
+                            title="Hard Costs" 
+                            amount={data.capexDetails.totalHardCosts} 
+                            totalCapex={data.metrics.totalCapex} 
+                            details={[
+                                { label: "Construction", amount: data.capexDetails.buildCost },
+                                { label: "Medical Equipment", amount: data.capexDetails.medEqCost },
+                                { label: "Infrastructure", amount: data.capexDetails.infraCost },
+                                { label: "FF&E", amount: data.capexDetails.ffeCost }
+                            ].filter(d => d.amount > 0)}
+                        />
+                        <ExpandableCapexRow 
+                            icon={<Briefcase size={16} className="text-[#99B6AA]" />} 
+                            title="Soft Costs" 
+                            amount={data.capexDetails.totalSoftCosts} 
+                            totalCapex={data.metrics.totalCapex} 
+                            details={[
+                                { label: "Consulting & Design", amount: data.capexDetails.consultantCost },
+                                { label: "Licenses & Permits", amount: data.capexDetails.licenseCost },
+                                { label: "Sharing Development", amount: data.capexDetails.sharingDevCost },
+                                { label: "VAT", amount: data.capexDetails.vatCost },
+                                { label: "Contingency", amount: data.capexDetails.contingencyCost }
+                            ].filter(d => d.amount > 0)}
+                        />
+                        <div className="flex justify-between items-center mt-2 pt-2 border-t-2 border-[#D8D8D8] px-2">
+                            <span className="text-[10px] font-black text-[#1E2F31] uppercase tracking-widest">Total Uses (Capex)</span>
+                            <span className="font-mono text-sm font-black text-[#1C6048]">{formatNumber(data.metrics.totalCapex, 1)} B</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1264,18 +1380,26 @@ const PropCoDashboardView = memo(({ data, assumptions, generateTeaser, isTeaserL
       </div>
 
       <div className={`space-y-6 ${isPresenting ? "lg:col-span-8" : ""}`}>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <MiniKPICard title="Equity Payback" value={`${formatNumber(data.metrics.payback, 1)} Yrs`} subtitle="From Y1" />
-            <MiniKPICard title="Operating Payback" value={`${formatNumber(data.metrics.operatingPayback, 1)} Yrs`} subtitle="From Operations" />
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+            <MiniKPICard title="Equity Payback" value={`${formatNumber(data.metrics.payback, 1)} Yrs`} subtitle="From Yr 1" />
+            <MiniKPICard title="Op. Payback" value={`${formatNumber(data.metrics.operatingPayback, 1)} Yrs`} subtitle="From Operations" />
             <MiniKPICard title="Avg DSCR" value={`${formatNumber(data.metrics.avgDscr, 2)}x`} subtitle="Debt Coverage" />
+            <MiniKPICard title="Min DSCR" value={`${formatNumber(data.metrics.minDscr, 2)}x`} subtitle="Lowest Coverage" />
             <MiniKPICard title="Cost per Bed" value={`${formatCurrency(data.metrics.costPerBed)}`} subtitle="Total / Beds" />
+            <MiniKPICard title="Cost per Sqm" value={`${formatNumber(data.metrics.costPerSqm, 1)} M`} subtitle="Total / Sqm" />
         </div>
 
         <div className="bg-white p-5 lg:p-6 rounded-2xl shadow-sm border border-[#D8D8D8]">
-          <h3 className="font-bold text-[#1E2F31] mb-6 flex items-center gap-2"><BarChart3 size={18} className="text-[#9B8B70]"/> PropCo Cash Flow Trajectory</h3>
-          <div className={isPresenting ? "h-[450px]" : "h-80"}>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+            <h3 className="font-bold text-[#1E2F31] flex items-center gap-2"><BarChart3 size={18} className="text-[#9B8B70]"/> PropCo Cash Flow Trajectory</h3>
+            <div className="flex bg-[#EFEBE7] p-1 rounded-lg border border-[#D8D8D8]">
+               <button onClick={() => setChartMode('full')} className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${chartMode === 'full' ? 'bg-white shadow-sm text-[#1E2F31]' : 'text-[#4C4A4B] hover:text-[#1E2F31]'}`}>Full Lifecycle</button>
+               <button onClick={() => setChartMode('operating')} className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${chartMode === 'operating' ? 'bg-white shadow-sm text-[#1E2F31]' : 'text-[#4C4A4B] hover:text-[#1E2F31]'}`}>Operating Only</button>
+            </div>
+          </div>
+          <div className={isPresenting ? "h-[450px]" : "h-[400px]"}>
               <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={data.annualData}>
+              <ComposedChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#D8D8D8" />
                   <XAxis dataKey="year" tick={{fontSize: 10, fill: '#4C4A4B'}} axisLine={false} />
                   <YAxis yAxisId="left" tick={{fontSize: 10, fill: '#4C4A4B'}} axisLine={false} tickFormatter={(val) => `${val}B`} />
@@ -1292,7 +1416,8 @@ const PropCoDashboardView = memo(({ data, assumptions, generateTeaser, isTeaserL
         </div>
       </div>
   </div>
-));
+  );
+});
 
 const PropCoCascadeView = memo(({ data, onExport }) => (
   <div className="space-y-6">
@@ -1393,7 +1518,7 @@ const ConsolidatedDashboardView = memo(({ data, assumptions, isPresenting }) => 
   <div className={isPresenting ? "grid grid-cols-1 lg:grid-cols-12 gap-6 items-start animate-in fade-in" : "space-y-6 animate-in fade-in"}>
     <div className={`space-y-6 ${isPresenting ? "lg:col-span-4" : ""}`}>
        <div className={`grid grid-cols-2 gap-4`}>
-          <KPICard title="Blended Equity NPV" value={formatCurrency(data.metrics.npv)} icon={<TrendingUp size={18} />} color="emerald" subtitle={`@${String(assumptions.discountRate)}% Disc Rate`} />
+          <KPICard title="Blended Equity NPV" value={formatCurrency(data.metrics.npv)} icon={<TrendingUp size={18} />} color="emerald" subtitle={`@${String(assumptions.holdCoDiscountRate)}% Disc Rate`} />
           <KPICard title="Blended Cash Multiple" value={`${formatNumber(data.metrics.moic, 2)}x`} icon={<BarChart3 size={18} />} color="blue" subtitle="Consolidated MOIC" />
           <KPICard title="Blended Equity IRR" value={`${formatNumber((data.metrics.irr || 0) * 100, 2)}%`} icon={<Activity size={18} />} color="emerald" subtitle="Compounded Return" />
           <KPICard title="Blended Payback" value={`${formatNumber(data.metrics.payback, 1)} Yrs`} icon={<Clock size={18} />} color="indigo" subtitle="From Year 1" />
@@ -1537,10 +1662,11 @@ const OpCoSettingsView = memo(({ assumptions, onChange, onSyncEquity, onValidate
           </div>
           <div className="space-y-4">
               <SectionTitle title="Capital, Setup & Tax" icon={<Scale size={16}/>} color="blue" />
-              <AssumptionRow label="Partner A Equity" val={assumptions.partnerAEquity} set={(v) => onChange('partnerAEquity', v)} unit="B" isLocked={isLocked} />
-              <AssumptionRow label="Partner B Equity" val={assumptions.partnerBEquity} set={(v) => onChange('partnerBEquity', v)} unit="B" isLocked={isLocked} />
-              <AssumptionRow label="Sharing Ratio A" val={assumptions.sharingPercentA} set={(v) => onChange('sharingPercentA', v)} unit="%" isLocked={isLocked} />
-              <AssumptionRow label="Discount Rate" val={assumptions.discountRate} set={(v) => onChange('discountRate', v)} unit="%" isLocked={isLocked} />
+              <AssumptionRow label="Strategic Ptnr Eq." val={assumptions.partnerAEquity} set={(v) => onChange('partnerAEquity', v)} unit="B" isLocked={isLocked} />
+              <AssumptionRow label="Vasanta Equity" val={assumptions.partnerBEquity} set={(v) => onChange('partnerBEquity', v)} unit="B" isLocked={isLocked} />
+              <AssumptionRow label="Strategic Ptnr Share" val={assumptions.sharingPercentA} set={(v) => onChange('sharingPercentA', v)} unit="%" isLocked={isLocked} />
+              <AssumptionRow label="OpCo Disc. Rate" val={assumptions.discountRate} set={(v) => onChange('discountRate', v)} unit="%" isLocked={isLocked} />
+              <AssumptionRow label="HoldCo Disc. Rate" val={assumptions.holdCoDiscountRate} set={(v) => onChange('holdCoDiscountRate', v)} unit="%" isLocked={isLocked} />
               <button onClick={onSyncEquity} disabled={isLocked} className="w-full py-2 bg-[#1E2F31] text-white rounded-lg text-[10px] font-bold shadow-md hover:opacity-90 mt-2 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"><Link2 size={12}/> Align Equity</button>
           </div>
       </div>
@@ -1653,7 +1779,7 @@ function AIAuditView({ aiInsights, isAiLoading, generateAIInsights, askQuery, se
       <div className="bg-white rounded-2xl shadow-lg border border-[#D8D8D8] overflow-hidden">
         <div className={`p-8 bg-gradient-to-br text-white flex flex-col md:flex-row justify-between items-center gap-6 ${activeCompany === 'opco' ? 'from-[#1E2F31] to-[#1C6048]' : 'from-[#4C4A4B] to-[#9B8B70]'}`}>
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-md hidden sm:block"><BrainCircuit size={40} className="text-white" /></div>
+            <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-md hidden sm:block"><AIMicroscopeIcon size={40} className="text-white" /></div>
             <div><h2 className="text-2xl font-bold">✨ Intelligent Audit</h2><p className="text-white/80 text-sm max-w-md">Benchmarking Project NPV, MOIC, Yields, and Margin efficiency.</p></div>
           </div>
           <button onClick={generateAIInsights} disabled={isAiLoading} className="bg-white px-6 py-3 rounded-xl font-bold text-[#1E2F31] shadow-xl hover:bg-opacity-90 transition-all">{isAiLoading ? <RefreshCcw size={18} className="animate-spin" /> : <Sparkles size={18} />} Run Yield Audit</button>
@@ -1664,7 +1790,7 @@ function AIAuditView({ aiInsights, isAiLoading, generateAIInsights, askQuery, se
         </div>
       </div>
       <div className="bg-white rounded-2xl shadow-lg border border-[#D8D8D8] p-8 mt-6">
-        <h3 className="text-lg font-bold text-[#1E2F31] mb-2 flex items-center gap-2"><BrainCircuit size={20} className="text-[#1C6048]"/> Ask AI</h3>
+        <h3 className="text-lg font-bold text-[#1E2F31] mb-2 flex items-center gap-2"><AIMicroscopeIcon size={20} className="text-[#1C6048]"/> Ask AI</h3>
         <div className="flex flex-col sm:flex-row gap-4 mt-4">
           <input type="text" value={askQuery} onChange={(e)=>setAskQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAskAI()} placeholder="Ask anything about the numbers..." className="flex-1 p-4 bg-white border border-[#D8D8D8] rounded-xl outline-none" />
           <button onClick={handleAskAI} disabled={isAskLoading || !askQuery.trim()} className="bg-[#1E2F31] text-white font-bold px-8 py-4 rounded-xl transition-all shadow-md">{isAskLoading ? "Thinking..." : "Ask"}</button>
@@ -1692,7 +1818,7 @@ export default function App() {
   const [user, setUser] = useState(null);
 
   const [projectInfo, setProjectInfo] = useState({ 
-    name: "Vasanta Hospital Development", 
+    name: "Vasanta Hospital Development Model", 
     location: "Tangerang, Banten", 
     type: "General Hospital (Class B)", 
     totalLand: "12,643 Sqm", 
@@ -1962,14 +2088,10 @@ export default function App() {
                       <button onClick={() => { setActiveCompany('consolidated'); if (activeTab === 'sensitivity' || activeTab === 'assumptions') setActiveTab('dashboard'); }} className={`px-3 py-1 rounded text-[11px] font-black uppercase tracking-wider transition-all ${activeCompany === 'consolidated' ? 'bg-[#1E2F31] text-white' : 'text-[#4C4A4B] hover:text-[#1E2F31]'}`}>HoldCo</button>
                   </div>
                   <NavButton active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} icon={<LayoutDashboard size={14} />} label="Dashboard" />
-                  <NavButton active={activeTab === 'ai'} onClick={() => setActiveTab('ai')} icon={<BrainCircuit size={14} />} label="AI Audit" />
+                  <NavButton active={activeTab === 'ai'} onClick={() => setActiveTab('ai')} icon={<AIMicroscopeIcon size={14} />} label="AI Audit" />
                   <NavButton active={activeTab === 'comprehensive'} onClick={() => setActiveTab('comprehensive')} icon={<List size={14} />} label="Full Cascade" />
-                  {activeCompany !== 'consolidated' && (
-                    <>
-                      <NavButton active={activeTab === 'sensitivity'} onClick={() => setActiveTab('sensitivity')} icon={<Grid size={14} />} label="Sensitivity" />
-                      <NavButton active={activeTab === 'assumptions'} onClick={() => setActiveTab('assumptions')} icon={<Settings size={14} />} label="Settings" />
-                    </>
-                  )}
+                  <NavButton active={activeTab === 'sensitivity'} onClick={() => setActiveTab('sensitivity')} icon={<Grid size={14} />} label="Sensitivity" disabled={activeCompany === 'consolidated'} />
+                  <NavButton active={activeTab === 'assumptions'} onClick={() => setActiveTab('assumptions')} icon={<Settings size={14} />} label="Settings" disabled={activeCompany === 'consolidated'} />
                 </>
               )}
             </div>
