@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef, memo } from 'react';
+import React, { useState, useMemo, useEffect, useRef, memo, useCallback } from 'react';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, 
   ResponsiveContainer, BarChart, Bar, ComposedChart, Cell, PieChart, Pie, ReferenceLine
@@ -12,12 +12,23 @@ import {
   AlertTriangle, Grid, Clock, Lock, Unlock, Info, MapPin, Building,
   Cloud, CloudOff, ChevronDown, GripHorizontal, Maximize, Minimize,
   BookOpen, Target, Search, FolderTree, BarChartHorizontal, Layers, Microscope,
-  Bed, Timer, Network, Plane
+  Bed, Timer, Network, Plane, Dna, Bone, Baby, Eye, Check
 } from 'lucide-react';
 
-// ==========================================
-// 1. UTILITIES & CONFIGURATION
-// ==========================================
+const CHART_MARGINS_BAR = { top: 20, right: 0, left: 0, bottom: 0 };
+const CHART_MARGINS_LINE = { top: 40, right: 20, left: 20, bottom: 0 };
+const TOOLTIP_STYLE = { borderRadius: '12px', border: '1px solid #D8D8D8', fontSize: '12px', color: '#1E2F31' };
+const CHART_CURSOR_STYLE = { fill: '#F9F8F6' };
+const LEGEND_STYLE = { fontSize: '11px', paddingTop: '20px' };
+
+// --- NEW STABLE REFERENCES FOR OPPORTUNITIES TAB ---
+const TICK_STYLE = { fontSize: 10, fill: '#4C4A4B' };
+const formatCancerCases = (val) => new Intl.NumberFormat('en-US').format(val);
+const formatInsuranceTooltip = (val) => val.toFixed(2) + "T IDR";
+const formatInsuranceLabel = (val) => val.toFixed(2);
+const LINE_LABEL_STYLE = { position: 'top', fill: '#4C4A4B', fontSize: 10, dy: -10, formatter: formatInsuranceLabel };
+// ---------------------------------------------------
+
 const formatNumber = (val, decimals = 1) => {
   if (val === null || val === undefined || isNaN(val)) return "0";
   const num = typeof val === 'string' ? parseFloat(val) : val;
@@ -201,8 +212,6 @@ const runOpCoEngine = (assumptions) => {
       const fixedTotal = staffCost + (assumptions.insuranceMonthly * 12 / 1000);
       const varRate = totalRev > 0 ? (totalMedSupp + totalDocFee + (assumptions.adminExpRate + assumptions.utilExpRate + assumptions.mktgExpRate + assumptions.operatorFeeRate) / 100 * totalRev) / totalRev : 0;
       
-      // FIX: Rent is a % of EBITDAR. Therefore, EBITDA is 0 exactly when EBITDAR is 0. 
-      // Breakeven occurs when the core Contribution Margin strictly covers Fixed Costs.
       const breakEvenRev = (1 - varRate) > 0 ? fixedTotal / (1 - varRate) : 0;
       const breakEvenBor = totalRev > 0 ? (breakEvenRev / totalRev) * bor : 0;
 
@@ -229,11 +238,12 @@ const runOpCoEngine = (assumptions) => {
       partnerACfs.push(shareA); partnerBCfs.push(shareB); projectCfs.push(netIncome + (i === 1 ? assumptions.workingCapitalOpex : 0));
     }
 
-    const operatingYears = annualData.filter(d => d.isOperating);
-    const stabilizedYear = operatingYears.find(y => y.bor >= assumptions.borMax) || operatingYears[operatingYears.length - 1] || operatingYears[0];
+    const operatingData = annualData.filter(d => d.isOperating);
+    const stabilizedYear = operatingData.find(y => y.bor >= assumptions.borMax) || operatingData[operatingData.length - 1] || operatingData[0];
     
     return { 
-      annualData, 
+      annualData,
+      operatingData,
       totals: { 
         totalRev: annualData.reduce((acc, d) => acc + (d.totalRev || 0), 0), 
         ipRev: annualData.reduce((acc, d) => acc + (d.ipRev || 0), 0),
@@ -266,14 +276,14 @@ const runOpCoEngine = (assumptions) => {
         payback: calculatePayback(partnerACfs), 
         totalCash: annualData.reduce((acc, d) => acc + (d.shareA || 0), 0), 
         moic: assumptions.partnerAEquity > 0 ? annualData.reduce((acc, d) => acc + (d.shareA || 0), 0) / assumptions.partnerAEquity : 0, 
-        avgYield: operatingYears.length > 0 ? operatingYears.reduce((a, b) => a + (b.pA_Yield || 0), 0) / operatingYears.length : 0 
+        avgYield: operatingData.length > 0 ? operatingData.reduce((a, b) => a + (b.pA_Yield || 0), 0) / operatingData.length : 0 
       },
       partnerB: { 
         irr: calculateIRR(partnerBCfs), 
         payback: calculatePayback(partnerBCfs),
         totalCash: annualData.reduce((acc, d) => acc + (d.shareB || 0), 0),
         moic: assumptions.partnerBEquity > 0 ? annualData.reduce((acc, d) => acc + (d.shareB || 0), 0) / assumptions.partnerBEquity : 0, 
-        avgYield: operatingYears.length > 0 ? operatingYears.reduce((a, b) => a + (b.pB_Yield || 0), 0) / operatingYears.length : 0
+        avgYield: operatingData.length > 0 ? operatingData.reduce((a, b) => a + (b.pB_Yield || 0), 0) / operatingData.length : 0
       }
     };
 };
@@ -392,18 +402,21 @@ const runPropCoEngine = (assumptions, opCoModelData) => {
         annualData.push({ year: `Year ${i + devYears}`, isOperating: true, revenue, maintOpex: maint, taxOpex: taxOp, overheadOpex: overhead, ffeReserve: reserve, ebitda, interest, principal, debtBalance: outstandingDebt, dep, corpTax: tax, netIncome, fcfe, cumFcfe: equityCum, dscr, yield: totalEquity > 0 ? (opFcfe / totalEquity) * 100 : 0, fcfeExLand, cumFcfeExLand: equityCumExLand, interestExLand, principalExLand, debtBalanceExLand: outstandingDebtExLand, exit, netExitProceeds: exit, ebt, netExitProceedsExLand: exitExLand, ebtExLand: (ebitda - interestExLand - dep), corpTaxExLand: (ebitda - interestExLand - dep > 0 ? (ebitda - interestExLand - dep) * (assumptions.corporateTax / 100) : 0) });
     }
 
+    const operatingData = annualData.filter(d => d.isOperating);
+
     return { 
-      annualData, 
+      annualData,
+      operatingData,
       metrics: { 
         totalCapex, totalDebt, totalEquity, 
         irr: calculateIRR(equityCfs), npv: calculateNPV(equityCfs, assumptions.discountRate), 
         unleveredIrr: calculateIRR(unleveredCfs), unleveredNpv: calculateNPV(unleveredCfs, assumptions.discountRate), 
         irrExLand: calculateIRR(equityCfsExLand), npvExLand: calculateNPV(equityCfsExLand, assumptions.discountRate), 
         payback: calculatePayback(equityCfs), operatingPayback: calculatePayback(operatingCfs), 
-        avgDscr: avgDscr / 10, minDscr: annualData.filter(d => d.isOperating && (d.principal + d.interest) > 0).length > 0 ? Math.min(...annualData.filter(d => d.isOperating && (d.principal + d.interest) > 0).map(d => d.dscr)) : 0, 
+        avgDscr: avgDscr / 10, minDscr: operatingData.filter(d => (d.principal + d.interest) > 0).length > 0 ? Math.min(...operatingData.filter(d => (d.principal + d.interest) > 0).map(d => d.dscr)) : 0, 
         avgYield: avgYield / 10, moic: equityCfs.reduce((acc, val) => val > 0 ? acc + val : acc, 0) / totalEquity, 
         costPerBed: totalCapex / 120, costPerSqm: assumptions.buildArea > 0 ? (totalCapex * 1000) / assumptions.buildArea : 0, 
-        yocExLand: (annualData.filter(d => d.isOperating).reduce((acc, d) => acc + d.ebitda, 0) / 10) / (totalCapexExLand) 
+        yocExLand: (operatingData.reduce((acc, d) => acc + d.ebitda, 0) / 10) / (totalCapexExLand) 
       }, 
       totals: { 
         revenue: annualData.reduce((acc, d) => acc + (d.revenue || 0), 0), 
@@ -463,6 +476,7 @@ const runConsolidatedEngine = (opCoData, propCoData, opCoAssumptions) => {
 
     return {
         annualData,
+        operatingData: annualData.filter(d => d.isOperating),
         metrics: {
             totalEquity: totalConsolidatedEquity,
             irr: calculateIRR(consolidatedCfs),
@@ -556,10 +570,10 @@ const CustomStethoscopeIcon = memo(({ size = 24, className = "" }) => (
     <line x1="48" y1="44" x2="48" y2="26" />
     <circle cx="48" cy="18" r="8" />
     <circle cx="48" cy="18" r="3" />
-    {/* Medical Cross Circle (Shifted left to maintain clean gap) */}
-    <circle cx="28" cy="29" r="9" />
-    <line x1="28" y1="25" x2="28" y2="33" />
-    <line x1="24" y1="29" x2="32" y2="29" />
+    {/* Medical Cross Circle (Lowered and Centered) */}
+    <circle cx="32" cy="38" r="6" />
+    <line x1="32" y1="35" x2="32" y2="41" />
+    <line x1="29" y1="38" x2="35" y2="38" />
   </svg>
 ));
 
@@ -701,7 +715,10 @@ const AssumptionDepreciationGroup = memo(({ label, methodVal, lifeVal, setMethod
 const ToggleRow = memo(({ label, desc, checked, onChange, isLocked }) => (
   <div className={`flex items-center justify-between p-3 bg-[#EFEBE7] border border-[#D8D8D8] rounded-xl ${isLocked ? 'opacity-70' : ''}`}>
     <div><p className="font-bold text-[#1E2F31] text-[11px]">{label}</p><p className="text-[9px] text-[#4C4A4B] font-medium">{desc}</p></div>
-    <label className={`relative inline-flex items-center ${isLocked ? 'cursor-not-allowed' : 'cursor-pointer'}`}><input disabled={isLocked} type="checkbox" className="sr-only peer" checked={checked} onChange={(e) => onChange(e.target.checked)} /><div className="w-9 h-5 bg-[#D8D8D8] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-[#D8D8D8] after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#9B8B70] peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"></div></label>
+    <label className={`relative inline-flex items-center ${isLocked ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+        <input disabled={isLocked} type="checkbox" className="sr-only peer" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+        <div className="w-9 h-5 bg-[#D8D8D8] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-[#D8D8D8] after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#9B8B70] peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"></div>
+    </label>
   </div>
 ));
 
@@ -875,7 +892,7 @@ const ExpandableCapexRow = memo(({ icon, title, amount, totalCapex, details }) =
   );
 });
 
-const PartnerReturnCard = memo(({ name, metrics, equity, share, color }) => {
+const PartnerReturnCard = ({ name, metrics, equity, share, color }) => {
   const c = color === 'blue' ? { text: 'text-[#1C6048]', bg: 'bg-[#EFEBE7]', border: 'border-[#D8D8D8]' } : { text: 'text-[#9B8B70]', bg: 'bg-[#EFEBE7]', border: 'border-[#D8D8D8]' };
   return (
     <div className="bg-white p-5 lg:p-6 rounded-2xl shadow-sm border border-[#D8D8D8] relative transition-all hover:shadow-md">
@@ -892,7 +909,7 @@ const PartnerReturnCard = memo(({ name, metrics, equity, share, color }) => {
       </div>
     </div>
   );
-});
+};
 
 const SensitivityTable = memo(({ title, subtitle, xLabel, yLabel, xValues, yValues, matrix, formatFn, reverseColors }) => {
   const all = matrix.flat().filter(v => v !== 0 && !isNaN(v));
@@ -1215,7 +1232,7 @@ const StudyView = memo(({ isPresenting, info }) => {
                         </div>
                     </div>
                     <div className="text-center md:text-left flex flex-col items-center md:items-start border-t md:border-t-0 md:border-l border-[#D8D8D8] pt-6 md:pt-0 md:pl-10">
-                        <p className="text-[10px] font-bold text-[#1E2F31] uppercase tracking-widest mb-4 bg-white/60 px-3 py-1.5 rounded-lg border border-[#D8D8D8]">WHO Standards 1: 1000</p>
+                        <p className="text-[10px] font-bold text-[#1E2F31] tracking-widest mb-4 bg-white/60 px-3 py-1.5 rounded-lg border border-[#D8D8D8]">WHO Standard 1 : 1000</p>
                         <p className="text-xs text-[#4C4A4B] leading-relaxed font-medium max-w-[200px]">
                             Operating at <strong className="text-[#1E2F31]">50%</strong> physician capacity.<br/><br/>A chronic shortage demands <strong className="text-[#1E2F31]">digital-first</strong> clinical support.
                         </p>
@@ -1271,59 +1288,266 @@ const StudyView = memo(({ isPresenting, info }) => {
 
         {activeMiniTab === 'marketStudy' && (
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6 animate-in fade-in zoom-in-95 duration-300">
-             <BentoBox colSpan="md:col-span-6">
-                 <BentoIcon icon={<ShieldCheck size={28}/>} color="blue"/>
-                 <h2 className="text-xl font-black text-[#1E2F31] tracking-tight mb-6">Key Competitors</h2>
-                 <div className="bg-[#F9F8F6] rounded-2xl border border-[#D8D8D8] divide-y divide-[#D8D8D8] overflow-hidden flex-1">
-                    <div className="p-4 lg:p-5 flex justify-between items-center hover:bg-white transition-colors">
-                      <div>
-                        <p className="font-bold text-[#1E2F31] text-sm">Hospital Alpha</p>
-                        <p className="text-[11px] text-[#4C4A4B] font-medium mt-0.5">Class B • 3.2km away</p>
-                      </div>
-                      <div className="text-right">
-                        <span className="font-mono text-sm font-black text-[#1C6048] block">210</span>
-                        <span className="text-[9px] text-[#4C4A4B] font-bold uppercase">Beds</span>
-                      </div>
+             
+             {/* Target Demographics Bento */}
+             <BentoBox colSpan="md:col-span-4" className="bg-[#1E2F31] text-white border-transparent">
+                 <BentoIcon icon={<Users size={28}/>} color="emerald" className="bg-white/20 text-white"/>
+                 <h2 className="text-xl font-black text-white tracking-tight mb-6">Target Demographics</h2>
+                 <div className="space-y-6 flex-1">
+                    <div>
+                       <p className="text-[11px] text-white/70 font-bold uppercase tracking-wider mb-1">Total Catchment</p>
+                       <p className="text-3xl font-black">3.2M <span className="text-sm font-medium text-white/70">Lives</span></p>
                     </div>
-                    <div className="p-4 lg:p-5 flex justify-between items-center hover:bg-white transition-colors">
-                      <div>
-                        <p className="font-bold text-[#1E2F31] text-sm">Hospital Beta</p>
-                        <p className="text-[11px] text-[#4C4A4B] font-medium mt-0.5">Class C • 5.1km away</p>
-                      </div>
-                      <div className="text-right">
-                        <span className="font-mono text-sm font-black text-[#9B8B70] block">105</span>
-                        <span className="text-[9px] text-[#4C4A4B] font-bold uppercase">Beds</span>
-                      </div>
+                    <div className="w-full h-px bg-white/20"></div>
+                    <div>
+                       <p className="text-[11px] text-[#99B6AA] font-bold uppercase tracking-wider mb-1">SES A & B (Premium Target)</p>
+                       <p className="text-4xl font-black text-[#9B8B70]">~18%</p>
+                       <p className="text-sm font-bold mt-1">576,000 Addressable Patients</p>
                     </div>
-                    <div className="p-4 lg:p-5 flex justify-between items-center hover:bg-white transition-colors">
-                      <div>
-                        <p className="font-bold text-[#1E2F31] text-sm">Hospital Gamma</p>
-                        <p className="text-[11px] text-[#4C4A4B] font-medium mt-0.5">Class C • 7.4km away</p>
-                      </div>
-                      <div className="text-right">
-                        <span className="font-mono text-sm font-black text-[#9B8B70] block">80</span>
-                        <span className="text-[9px] text-[#4C4A4B] font-bold uppercase">Beds</span>
-                      </div>
-                    </div>
+                    <p className="text-[11px] text-white/80 leading-relaxed font-medium mt-auto bg-white/10 p-4 rounded-xl border border-white/20">
+                      A highly concentrated premium demographic pool, perfectly correlated with commercial health insurance ownership and medical tourism expenditure.
+                    </p>
                  </div>
              </BentoBox>
 
-             <BentoBox colSpan="md:col-span-6" className="bg-[#1E2F31] text-white border-transparent">
-                 <BentoIcon icon={<Map size={28}/>} color="emerald" className="bg-white/20 text-white"/>
-                 <h2 className="text-xl font-black text-white tracking-tight mb-8">Patient Origin Catchment</h2>
-                 <div className="space-y-6 flex-1 flex flex-col justify-center">
-                    <div>
-                      <div className="flex justify-between text-xs font-bold mb-2"><span className="text-white/80">Primary (0-5 km)</span><span className="text-white font-black text-lg">60%</span></div>
-                      <div className="h-3 bg-white/10 rounded-full overflow-hidden"><div className="h-full bg-[#1C6048] w-[60%] rounded-full"></div></div>
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-xs font-bold mb-2"><span className="text-white/80">Secondary (5-10 km)</span><span className="text-white font-black text-lg">30%</span></div>
-                      <div className="h-3 bg-white/10 rounded-full overflow-hidden"><div className="h-full bg-[#99B6AA] w-[30%] rounded-full"></div></div>
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-xs font-bold mb-2"><span className="text-white/80">Tertiary (&gt;10 km)</span><span className="text-white font-black text-lg">10%</span></div>
-                      <div className="h-3 bg-white/10 rounded-full overflow-hidden"><div className="h-full bg-[#9B8B70] w-[10%] rounded-full"></div></div>
-                    </div>
+             {/* Regulatory Matrix Bento (Moved up and resized to 8 columns) */}
+             <BentoBox colSpan="md:col-span-8" className="bg-white border-[#D8D8D8]">
+                 <div className="flex items-center gap-4 mb-10">
+                     <BentoIcon icon={<Scale size={28}/>} color="amber" className="mb-0"/>
+                     <h2 className="text-xl font-black text-[#1E2F31] tracking-tight">Regulatory Baseline <span className="font-medium text-[#4C4A4B] text-sm ml-2 hidden xl:inline">(Bed Capacity Requirements)</span></h2>
+                 </div>
+                 
+                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-12 lg:gap-8">
+                     
+                     {/* Diagram 1: Hospital Type */}
+                     <div className="flex flex-col items-center">
+                         <div className="px-6 py-2 bg-[#F9F8F6] border border-[#D8D8D8] text-[#4C4A4B] text-[13px] font-medium shadow-sm">Hospital Type</div>
+                         <div className="w-px h-6 bg-[#A0A0A0]"></div>
+                         <div className="w-full max-w-[260px] h-px bg-[#A0A0A0]"></div>
+                         <div className="w-full max-w-[260px] flex justify-between">
+                             <div className="w-px h-6 bg-[#A0A0A0]"></div>
+                             <div className="w-px h-6 bg-[#A0A0A0]"></div>
+                         </div>
+                         <div className="w-full max-w-[340px] grid grid-cols-2 gap-4 lg:gap-8">
+                             <div className="flex flex-col items-center">
+                                 <div className="w-full py-2 bg-[#99B6AA] text-white text-center text-xs font-bold mb-4">General</div>
+                                 <ul className="text-xs text-[#4C4A4B] space-y-1.5 w-full pl-2">
+                                     <li><strong className="text-[#1E2F31] font-black text-[13px]">A &ge; 250 beds</strong></li>
+                                     <li><strong className="text-[#1E2F31] font-black text-[13px]">B &ge; 200 beds</strong></li>
+                                     <li><span className="opacity-60 font-medium">C &ge; 100 beds</span></li>
+                                     <li><span className="opacity-60 font-medium">D &ge; 50 beds</span></li>
+                                 </ul>
+                             </div>
+                             <div className="flex flex-col items-center">
+                                 <div className="w-full py-2 bg-[#1C6048] text-white text-center text-xs font-bold mb-4 shadow-md">Specialized</div>
+                                 <ul className="text-xs text-[#4C4A4B] space-y-1.5 w-full pl-2">
+                                     <li><strong className="text-[#1E2F31] font-black text-[13px]">A &ge; 100 beds</strong></li>
+                                     <li><span className="opacity-60 font-medium">B &ge; 75 beds</span></li>
+                                     <li><span className="opacity-60 font-medium">C &ge; 25 beds</span></li>
+                                 </ul>
+                             </div>
+                         </div>
+                         <div className="mt-8 text-xs text-[#4C4A4B] italic text-center">Permenkes No.3 Tahun 2020</div>
+                     </div>
+
+                     {/* Diagram 2: Private Hospital */}
+                     <div className="flex flex-col items-center">
+                         <div className="px-6 py-2 bg-[#F9F8F6] border border-[#D8D8D8] text-[#4C4A4B] text-[13px] font-medium shadow-sm">Private Hospital</div>
+                         <div className="w-px h-6 bg-[#A0A0A0]"></div>
+                         <div className="w-full max-w-[260px] h-px bg-[#A0A0A0]"></div>
+                         <div className="w-full max-w-[260px] flex justify-between">
+                             <div className="w-px h-6 bg-[#A0A0A0]"></div>
+                             <div className="w-px h-6 bg-[#A0A0A0]"></div>
+                         </div>
+                         <div className="w-full max-w-[340px] grid grid-cols-2 gap-4 lg:gap-8">
+                             <div className="flex flex-col items-center">
+                                 <div className="w-full py-2 bg-[#99B6AA] text-white text-center text-xs font-bold mb-4">Domestic</div>
+                             </div>
+                             <div className="flex flex-col">
+                                 <div className="w-full py-2 bg-[#1C6048] text-white text-center text-xs font-bold mb-4 shadow-md">Foreign</div>
+                                 <div className="text-[11px] text-[#4C4A4B] w-full">
+                                     <p className="mb-2 font-medium">Min. requirements:</p>
+                                     <ul className="space-y-2">
+                                         <li className="flex items-start gap-2">
+                                             <span className="text-[#4C4A4B] text-[8px] mt-1">&#9642;</span>
+                                             <span><strong className="text-[#1E2F31] font-black text-[12px]">50 beds</strong> & <strong className="text-[#1E2F31] font-black text-[12px]">1</strong> top-tier service</span>
+                                         </li>
+                                         <li className="flex items-start gap-2">
+                                             <span className="text-[#4C4A4B] text-[8px] mt-1">&#9642;</span>
+                                             <span><strong className="text-[#1E2F31] font-black text-[12px]">200 beds</strong> & <strong className="text-[#1E2F31] font-black text-[12px]">2</strong> top-tier services</span>
+                                         </li>
+                                     </ul>
+                                 </div>
+                             </div>
+                         </div>
+                         <div className="mt-8 text-xs text-[#4C4A4B] italic text-center mt-auto pt-6">Permenkes No.11 Tahun 2025</div>
+                     </div>
+                     
+                 </div>
+             </BentoBox>
+
+             {/* Competitor Gap Matrix Bento (Moved down and expanded to full 12 columns) */}
+             <BentoBox colSpan="md:col-span-12">
+                 <div className="flex items-center gap-4 mb-6">
+                     <BentoIcon icon={<ShieldCheck size={28}/>} color="blue" className="mb-0"/>
+                     <h2 className="text-xl font-black text-[#1E2F31] tracking-tight">Competitor Service Gap (The Moat)</h2>
+                 </div>
+                 <div className="overflow-x-auto">
+                     <table className="w-full text-left border-collapse min-w-[500px]">
+                        <thead>
+                           <tr>
+                              <th className="p-3 border-b-2 border-[#D8D8D8] text-[11px] font-bold text-[#4C4A4B] uppercase tracking-widest">Clinical Capability</th>
+                              <th className="p-3 border-b-2 border-[#D8D8D8] text-[11px] font-bold text-[#4C4A4B] uppercase tracking-widest text-center bg-[#F9F8F6]">Local Gen. Hospitals<br/><span className="text-[9px] font-medium opacity-70">(Alpha, Beta, Gamma)</span></th>
+                              <th className="p-3 border-b-2 border-[#1C6048] text-[11px] font-black text-[#1C6048] uppercase tracking-widest text-center bg-[#E8EFEA] rounded-t-xl">Vasanta Oncology<br/><span className="text-[9px] font-medium opacity-80">(Proposed 120-Bed)</span></th>
+                           </tr>
+                        </thead>
+                        <tbody className="text-[13px]">
+                           <tr className="border-b border-[#D8D8D8]">
+                              <td className="p-4 font-bold text-[#1E2F31]">Basic Chemotherapy</td>
+                              <td className="p-4 text-center bg-[#F9F8F6]"><Check size={20} className="mx-auto text-[#9B8B70]"/></td>
+                              <td className="p-4 text-center bg-[#E8EFEA]"><Check size={20} className="mx-auto text-[#1C6048]"/></td>
+                           </tr>
+                           <tr className="border-b border-[#D8D8D8]">
+                              <td className="p-4 font-bold text-[#1E2F31]">General Surgical Oncology</td>
+                              <td className="p-4 text-center bg-[#F9F8F6]"><Check size={20} className="mx-auto text-[#9B8B70]"/></td>
+                              <td className="p-4 text-center bg-[#E8EFEA]"><Check size={20} className="mx-auto text-[#1C6048]"/></td>
+                           </tr>
+                           <tr className="border-b border-[#D8D8D8]">
+                              <td className="p-4 font-bold text-[#1E2F31]">PET-CT Diagnostics</td>
+                              <td className="p-4 text-center bg-[#F9F8F6]"><X size={20} className="mx-auto text-[#D8D8D8]"/></td>
+                              <td className="p-4 text-center bg-[#E8EFEA]"><Check size={20} className="mx-auto text-[#1C6048]"/></td>
+                           </tr>
+                           <tr>
+                              <td className="p-4 font-bold text-[#1E2F31]">LINAC & BAPETEN Bunkers</td>
+                              <td className="p-4 text-center bg-[#F9F8F6]"><X size={20} className="mx-auto text-[#D8D8D8]"/></td>
+                              <td className="p-4 text-center bg-[#E8EFEA] rounded-b-xl"><Check size={20} className="mx-auto text-[#1C6048]"/></td>
+                           </tr>
+                        </tbody>
+                     </table>
+                 </div>
+                 <p className="text-[11px] text-[#4C4A4B] leading-relaxed font-medium mt-6 bg-[#EFEBE7] p-4 rounded-xl border border-[#D8D8D8]">
+                     <strong className="text-[#1E2F31]">Strategic Takeaway:</strong> Local competitors are restricted to low-barrier treatments. By absorbing the heavy upfront CapEx for LINAC bunkers and PET-CT, Vasanta creates an <strong className="text-[#1C6048]">insurmountable competitive moat</strong>, capturing high-margin, recurring radiotherapy revenues that are currently leaking overseas.
+                 </p>
+             </BentoBox>
+
+             {/* Center of Excellence (CoE) Options (Empty State Matrix) */}
+             <BentoBox colSpan="md:col-span-12" className="bg-white border-[#D8D8D8]">
+                 <div className="flex items-center gap-4 mb-6 pt-2">
+                     <BentoIcon icon={<Microscope size={28}/>} color="indigo" className="mb-0"/>
+                     <h2 className="text-xl font-black text-[#1E2F31] tracking-tight">Center of Excellence (CoE) Options</h2>
+                 </div>
+                 
+                 <div className="overflow-x-auto pb-6 pt-6 px-2 -mx-2">
+                     <div className="min-w-[800px] grid grid-cols-5 gap-3 lg:gap-4">
+                         
+                         {/* Column 1: Row Labels */}
+                         <div className="flex flex-col justify-end">
+                             <div className="h-20"></div>
+                             <div className="h-16 flex items-center border-b border-[#D8D8D8] pr-4">
+                                 <p className="text-[10px] font-bold text-[#4C4A4B] uppercase tracking-widest leading-tight">120-Bed Unit Economics</p>
+                             </div>
+                             <div className="h-16 flex items-center border-b border-[#D8D8D8] pr-4">
+                                 <p className="text-[10px] font-bold text-[#4C4A4B] uppercase tracking-widest leading-tight">Competitive Moat</p>
+                             </div>
+                             <div className="h-16 flex items-center border-b border-[#D8D8D8] pr-4">
+                                 <p className="text-[10px] font-bold text-[#4C4A4B] uppercase tracking-widest leading-tight">Inpatient Utilization</p>
+                             </div>
+                             <div className="h-16"></div>
+                         </div>
+
+                         {/* Column 2: Oncology (The Winner Highlight) */}
+                         <div className="bg-[#1C6048] rounded-2xl flex flex-col shadow-sm transform transition-all duration-300 hover:-translate-y-4 hover:shadow-2xl border border-[#1C6048] z-10 relative cursor-pointer">
+                             <div className="h-20 flex flex-col items-center justify-center border-b border-white/20">
+                                 <Dna size={28} className="text-white mb-1.5" strokeWidth={1.5} />
+                                 <h4 className="font-bold text-white text-base tracking-wide">Oncology</h4>
+                             </div>
+                             <div className="h-16 flex flex-col items-center justify-center border-b border-white/20 text-center px-1">
+                                 <p className="font-black text-white text-[13px]">Highly Scalable</p>
+                                 <p className="text-[9px] text-white/80 leading-tight mt-0.5">Recurring multi-modality revenue</p>
+                             </div>
+                             <div className="h-16 flex flex-col items-center justify-center border-b border-white/20 text-center px-1">
+                                 <p className="font-black text-white text-[13px]">Extreme Moat</p>
+                                 <p className="text-[9px] text-white/80 leading-tight mt-0.5">BAPETEN Bunkers & LINAC</p>
+                             </div>
+                             <div className="h-16 flex flex-col items-center justify-center border-b border-white/20 text-center px-1">
+                                 <p className="font-black text-white text-[13px]">High Volume</p>
+                                 <p className="text-[9px] text-white/80 leading-tight mt-0.5">Diagnostics, Chemo, Surgical, Palliative</p>
+                             </div>
+                             <div className="h-16 flex items-center justify-center bg-[#18533E] rounded-b-2xl">
+                                 <div className="bg-white text-[#1C6048] p-1.5 rounded-full shadow-md"><Check size={20} strokeWidth={4} /></div>
+                             </div>
+                         </div>
+
+                         {/* Column 3: Orthopedic */}
+                         <div className="bg-[#F9F8F6] rounded-2xl flex flex-col border border-[#D8D8D8] opacity-90 transition-all hover:opacity-100 hover:shadow-md cursor-pointer group">
+                             <div className="h-20 flex flex-col items-center justify-center border-b border-[#D8D8D8]">
+                                 <Bone size={24} className="text-[#1E2F31] mb-1.5 group-hover:text-[#1C6048] transition-colors" strokeWidth={1.5} />
+                                 <h4 className="font-bold text-[#1E2F31] text-sm group-hover:text-[#1C6048] transition-colors">Orthopedic</h4>
+                             </div>
+                             <div className="h-16 flex flex-col items-center justify-center border-b border-[#D8D8D8] text-center px-1 group-hover:bg-white transition-colors">
+                                 <p className="font-bold text-[#1E2F31] text-[13px] group-hover:text-[#1C6048] transition-colors">Moderate</p>
+                                 <p className="text-[9px] text-[#4C4A4B] leading-tight mt-0.5">High-margin surgical interventions</p>
+                             </div>
+                             <div className="h-16 flex flex-col items-center justify-center border-b border-[#D8D8D8] text-center px-1 group-hover:bg-white transition-colors">
+                                 <p className="font-bold text-[#1E2F31] text-[13px] group-hover:text-[#1C6048] transition-colors">Moderate</p>
+                                 <p className="text-[9px] text-[#4C4A4B] leading-tight mt-0.5">Standardized Surgical Equipment</p>
+                             </div>
+                             <div className="h-16 flex flex-col items-center justify-center border-b border-[#D8D8D8] text-center px-1 group-hover:bg-white transition-colors">
+                                 <p className="font-bold text-[#1E2F31] text-[13px] group-hover:text-[#1C6048] transition-colors">Moderate</p>
+                                 <p className="text-[9px] text-[#4C4A4B] leading-tight mt-0.5">Standard Post-Op recovery</p>
+                             </div>
+                             <div className="h-16 flex items-center justify-center rounded-b-2xl group-hover:bg-white transition-colors">
+                                 <X size={24} strokeWidth={3} className="text-[#9B8B70]"/>
+                             </div>
+                         </div>
+
+                         {/* Column 4: Maternity */}
+                         <div className="bg-[#F9F8F6] rounded-2xl flex flex-col border border-[#D8D8D8] opacity-90 transition-all hover:opacity-100 hover:shadow-md cursor-pointer group">
+                             <div className="h-20 flex flex-col items-center justify-center border-b border-[#D8D8D8]">
+                                 <Baby size={24} className="text-[#1E2F31] mb-1.5 group-hover:text-[#1C6048] transition-colors" strokeWidth={1.5} />
+                                 <h4 className="font-bold text-[#1E2F31] text-sm group-hover:text-[#1C6048] transition-colors">Maternity & IVF</h4>
+                             </div>
+                             <div className="h-16 flex flex-col items-center justify-center border-b border-[#D8D8D8] text-center px-1 group-hover:bg-white transition-colors">
+                                 <p className="font-bold text-[#1E2F31] text-[13px] group-hover:text-[#1C6048] transition-colors">Low</p>
+                                 <p className="text-[9px] text-[#4C4A4B] leading-tight mt-0.5">Insufficient premium birth volume</p>
+                             </div>
+                             <div className="h-16 flex flex-col items-center justify-center border-b border-[#D8D8D8] text-center px-1 group-hover:bg-white transition-colors">
+                                 <p className="font-bold text-[#1E2F31] text-[13px] group-hover:text-[#1C6048] transition-colors">Low</p>
+                                 <p className="text-[9px] text-[#4C4A4B] leading-tight mt-0.5">High local clinic density</p>
+                             </div>
+                             <div className="h-16 flex flex-col items-center justify-center border-b border-[#D8D8D8] text-center px-1 group-hover:bg-white transition-colors">
+                                 <p className="font-bold text-[#1E2F31] text-[13px] group-hover:text-[#1C6048] transition-colors">Low/Moderate</p>
+                                 <p className="text-[9px] text-[#4C4A4B] leading-tight mt-0.5">Short stay</p>
+                             </div>
+                             <div className="h-16 flex items-center justify-center rounded-b-2xl group-hover:bg-white transition-colors">
+                                 <X size={24} strokeWidth={3} className="text-[#9B8B70]"/>
+                             </div>
+                         </div>
+
+                         {/* Column 5: Specialized Eye */}
+                         <div className="bg-[#F9F8F6] rounded-2xl flex flex-col border border-[#D8D8D8] opacity-90 transition-all hover:opacity-100 hover:shadow-md cursor-pointer group">
+                             <div className="h-20 flex flex-col items-center justify-center border-b border-[#D8D8D8]">
+                                 <Eye size={24} className="text-[#1E2F31] mb-1.5 group-hover:text-[#1C6048] transition-colors" strokeWidth={1.5} />
+                                 <h4 className="font-bold text-[#1E2F31] text-sm group-hover:text-[#1C6048] transition-colors">Specialized Eye</h4>
+                             </div>
+                             <div className="h-16 flex flex-col items-center justify-center border-b border-[#D8D8D8] text-center px-1 group-hover:bg-white transition-colors">
+                                 <p className="font-bold text-[#1E2F31] text-[13px] group-hover:text-[#1C6048] transition-colors">Low</p>
+                                 <p className="text-[9px] text-[#4C4A4B] leading-tight mt-0.5">Excess facility overhead</p>
+                             </div>
+                             <div className="h-16 flex flex-col items-center justify-center border-b border-[#D8D8D8] text-center px-1 group-hover:bg-white transition-colors">
+                                 <p className="font-bold text-[#1E2F31] text-[13px] group-hover:text-[#1C6048] transition-colors">Weak</p>
+                                 <p className="text-[9px] text-[#4C4A4B] leading-tight mt-0.5">High local clinic density</p>
+                             </div>
+                             <div className="h-16 flex flex-col items-center justify-center border-b border-[#D8D8D8] text-center px-1 group-hover:bg-white transition-colors">
+                                 <p className="font-bold text-[#1E2F31] text-[13px] group-hover:text-[#1C6048] transition-colors">Low</p>
+                                 <p className="text-[9px] text-[#4C4A4B] leading-tight mt-0.5">Outpatient heavy</p>
+                             </div>
+                             <div className="h-16 flex items-center justify-center rounded-b-2xl group-hover:bg-white transition-colors">
+                                 <X size={24} strokeWidth={3} className="text-[#9B8B70]"/>
+                             </div>
+                         </div>
+                         
+                     </div>
                  </div>
              </BentoBox>
           </div>
@@ -1351,14 +1575,13 @@ const StudyView = memo(({ isPresenting, info }) => {
                     <h3 className="text-[13px] text-center text-[#4C4A4B] font-medium mb-10">Indonesia Annual Cancer Cases</h3>
                     <div className="h-48 w-full mb-8">
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={CANCER_DATA} margin={{ top: 20, right: 0, left: 0, bottom: 0 }}>
-                          <XAxis dataKey="name" axisLine={true} stroke="#EFEBE7" tickLine={false} tick={{ fontSize: 10, fill: '#4C4A4B' }} dy={10} />
-                          <Tooltip cursor={{fill: '#F9F8F6'}} contentStyle={{ borderRadius: '12px', border: '1px solid #D8D8D8', fontSize: '12px', color: '#1E2F31' }} formatter={(val) => new Intl.NumberFormat('en-US').format(val)} />
+                        <BarChart data={CANCER_DATA} margin={CHART_MARGINS_BAR}>
+                          <XAxis dataKey="name" axisLine={true} stroke="#EFEBE7" tickLine={false} tick={TICK_STYLE} dy={10} />
+                          <Tooltip cursor={CHART_CURSOR_STYLE} contentStyle={TOOLTIP_STYLE} formatter={formatCancerCases} />
                           <Bar dataKey="cases" radius={[2, 2, 0, 0]} barSize={30}>
                             {CANCER_DATA.map((entry, index) => (
                               <Cell key={`cell-${index}`} fill={entry.fill} />
                             ))}
-                            <recharts-label position="top" fill="#4C4A4B" fontSize={10} formatter={(val) => new Intl.NumberFormat('en-US').format(val)} />
                           </Bar>
                         </BarChart>
                       </ResponsiveContainer>
@@ -1381,11 +1604,11 @@ const StudyView = memo(({ isPresenting, info }) => {
                          </svg>
                       </div>
                       <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={INSURANCE_DATA} margin={{ top: 40, right: 20, left: 20, bottom: 0 }}>
-                          <XAxis dataKey="year" axisLine={true} stroke="#EFEBE7" tickLine={false} tick={{ fontSize: 10, fill: '#4C4A4B' }} dy={10} />
+                        <LineChart data={INSURANCE_DATA} margin={CHART_MARGINS_LINE}>
+                          <XAxis dataKey="year" axisLine={true} stroke="#EFEBE7" tickLine={false} tick={TICK_STYLE} dy={10} />
                           <YAxis hide domain={['dataMin - 2', 'dataMax + 2']} />
-                          <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #D8D8D8', fontSize: '12px', color: '#1E2F31' }} formatter={(val) => val.toFixed(2) + "T IDR"} />
-                          <Line type="monotone" dataKey="value" stroke="#99B6AA" strokeWidth={3} dot={{ r: 4, strokeWidth: 2, fill: '#fff', stroke: '#99B6AA' }} label={{ position: 'top', fill: '#4C4A4B', fontSize: 10, dy: -10, formatter: (val) => val.toFixed(2) }} />
+                          <Tooltip contentStyle={TOOLTIP_STYLE} formatter={formatInsuranceTooltip} />
+                          <Line type="monotone" dataKey="value" stroke="#99B6AA" strokeWidth={3} dot={{ r: 4, strokeWidth: 2, fill: '#fff', stroke: '#99B6AA' }} label={LINE_LABEL_STYLE} />
                         </LineChart>
                       </ResponsiveContainer>
                     </div>
@@ -1396,8 +1619,8 @@ const StudyView = memo(({ isPresenting, info }) => {
                 </div>
 
                 {/* Column 3: Capital Outflow */}
-                <div className="flex flex-col h-full items-center justify-start pt-2">
-                    <h3 className="text-[13px] text-center text-[#4C4A4B] font-medium mb-12">Annual Capital Outflow</h3>
+                <div className="flex flex-col h-full items-center">
+                    <h3 className="text-[13px] text-center text-[#4C4A4B] font-medium mb-10">Annual Capital Outflow</h3>
                     
                     <Plane size={64} className="text-[#1C6048] mb-4 transform -rotate-[2deg]" strokeWidth={1.5} />
                     <div className="w-20 h-[3px] bg-[#1C6048] mb-12"></div>
@@ -1409,6 +1632,12 @@ const StudyView = memo(({ isPresenting, info }) => {
                     </p>
                 </div>
 
+             </div>
+
+             <div className="mt-10 pt-5 border-t border-[#EFEBE7]">
+                 <p className="text-[9px] text-[#9B8B70] italic text-center md:text-left">
+                    Sources: GLOBOCAN 2022 (Cancer Incidence); Asosiasi Asuransi Jiwa Indonesia / AAJI (Premium Growth); Indonesia Ministry of Health / MoH Medical Tourism Data (Capital Outflow)
+                 </p>
              </div>
           </div>
         )}
@@ -1466,13 +1695,13 @@ const OpCoDashboardView = memo(({ data, assumptions, generateTeaser, isTeaserLoa
           <h3 className="font-bold text-[#1E2F31] mb-6 flex items-center gap-2"><BarChart3 size={18} className="text-[#1C6048]"/> Operating Cash Flow Trajectory</h3>
           <div className={isPresenting ? "h-[300px]" : "h-72"}>
               <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={data.annualData.filter(d => d.isOperating)}>
+              <ComposedChart data={data.operatingData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#D8D8D8" />
                   <XAxis dataKey="year" tick={{fontSize: 10, fill: '#4C4A4B'}} axisLine={false} />
                   <YAxis yAxisId="left" tick={{fontSize: 10, fill: '#4C4A4B'}} axisLine={false} tickFormatter={(val) => `${val}B`} />
                   <YAxis yAxisId="right" orientation="right" tick={{fontSize: 10, fill: '#1E2F31'}} axisLine={false} tickFormatter={(val) => `${val}%`} />
-                  <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #D8D8D8' }} formatter={(val, name) => formatNumber(val, 1) + (name === "Occupancy (BOR)" ? "%" : "B")} />
-                  <Legend iconType="circle" wrapperStyle={{fontSize: '11px', paddingTop: '20px'}} />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(val, name) => formatNumber(val, 1) + (name === "Occupancy (BOR)" ? "%" : "B")} />
+                  <Legend iconType="circle" wrapperStyle={LEGEND_STYLE} />
                   
                   <Bar yAxisId="left" dataKey="totalRev" name="Net Revenue" fill="#1C6048" radius={[4, 4, 0, 0]} barSize={40} />
                   <Line yAxisId="left" type="monotone" dataKey="ebitda" name="EBITDA" stroke="#1E2F31" strokeWidth={3} dot={{ r: 4, fill: '#1E2F31', strokeWidth: 2, stroke: '#fff' }} />
@@ -1488,12 +1717,12 @@ const OpCoDashboardView = memo(({ data, assumptions, generateTeaser, isTeaserLoa
               <h3 className="font-bold text-[#1E2F31] mb-6 flex items-center gap-2"><Activity size={18} className="text-[#1E2F31]"/> Cash-on-Cash Trajectory</h3>
               <div className="h-56">
                   <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={data.annualData.filter(d => d.isOperating)}>
+                  <LineChart data={data.operatingData}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#D8D8D8" />
                       <XAxis dataKey="year" tick={{fontSize: 10, fill: '#4C4A4B'}} axisLine={false} />
                       <YAxis tick={{fontSize: 10, fill: '#4C4A4B'}} axisLine={false} tickFormatter={(val) => `${val}%`} />
-                      <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #D8D8D8' }} formatter={(val) => formatNumber(val, 1) + "%"} />
-                      <Legend iconType="circle" wrapperStyle={{fontSize: '11px', paddingTop: '20px'}} />
+                      <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(val) => formatNumber(val, 1) + "%"} />
+                      <Legend iconType="circle" wrapperStyle={LEGEND_STYLE} />
                       <Line type="monotone" dataKey="pA_Yield" name="Strategic Ptnr Yield" stroke="#1C6048" strokeWidth={3} dot={{ r: 3, strokeWidth: 2 }} />
                       <Line type="monotone" dataKey="roe" name="Project ROE" stroke="#9B8B70" strokeWidth={3} dot={{ r: 3, strokeWidth: 2 }} />
                   </LineChart>
@@ -1505,12 +1734,12 @@ const OpCoDashboardView = memo(({ data, assumptions, generateTeaser, isTeaserLoa
               <h3 className="font-bold text-[#1E2F31] mb-6 flex items-center gap-2"><Target size={18} className="text-[#99B6AA]"/> Breakeven Audit</h3>
               <div className="h-56">
                   <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={data.annualData.filter(d => d.isOperating)}>
+                  <ComposedChart data={data.operatingData}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#D8D8D8" />
                       <XAxis dataKey="year" tick={{fontSize: 10, fill: '#4C4A4B'}} axisLine={false} />
                       <YAxis tick={{fontSize: 10, fill: '#4C4A4B'}} axisLine={false} tickFormatter={(val) => `${val}%`} />
-                      <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #D8D8D8' }} formatter={(val) => formatNumber(val, 1) + "%"} />
-                      <Legend iconType="circle" wrapperStyle={{fontSize: '11px', paddingTop: '20px'}} />
+                      <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(val) => formatNumber(val, 1) + "%"} />
+                      <Legend iconType="circle" wrapperStyle={LEGEND_STYLE} />
                       <Bar dataKey="breakEvenBor" name="Breakeven BOR required" fill="#D8D8D8" radius={[4, 4, 0, 0]} barSize={30} />
                       <Line type="monotone" dataKey="bor" name="Actual Projected BOR" stroke="#1E2F31" strokeWidth={3} dot={{ r: 3, strokeWidth: 2 }} />
                   </ComposedChart>
@@ -1580,7 +1809,7 @@ const OpCoCascadeView = memo(({ data, assumptions }) => (
 
 const PropCoDashboardView = memo(({ data, assumptions, generateTeaser, isTeaserLoading, showTeaser, setShowTeaser, teaserContent, setTab, isPresenting }) => {
   const [chartMode, setChartMode] = useState('full');
-  const chartData = chartMode === 'full' ? data.annualData : data.annualData.filter(d => d.isOperating);
+  const chartData = chartMode === 'full' ? data.annualData : data.operatingData;
   const devYears = Math.max(1, Math.ceil((assumptions.devDurationMonths || 12) / 12));
 
   return (
@@ -1713,8 +1942,8 @@ const PropCoDashboardView = memo(({ data, assumptions, generateTeaser, isTeaserL
                   <XAxis dataKey="year" tick={{fontSize: 10, fill: '#4C4A4B'}} axisLine={false} />
                   <YAxis yAxisId="left" tick={{fontSize: 10, fill: '#4C4A4B'}} axisLine={false} tickFormatter={(val) => `${val}B`} />
                   <YAxis yAxisId="right" orientation="right" tick={{fontSize: 10, fill: '#1E2F31'}} axisLine={false} tickFormatter={(val) => `${val}B`} />
-                  <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #D8D8D8' }} formatter={(val) => formatNumber(val, 1) + "B"} />
-                  <Legend iconType="circle" wrapperStyle={{fontSize: '11px', paddingTop: '20px'}} />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(val) => formatNumber(val, 1) + "B"} />
+                  <Legend iconType="circle" wrapperStyle={LEGEND_STYLE} />
                   
                   <Bar yAxisId="left" dataKey="ebitda" name="EBITDA (NOI)" fill="#9B8B70" radius={[4, 4, 0, 0]} barSize={40} />
                   <Line yAxisId="left" type="monotone" dataKey="fcfe" name="FCFE" stroke="#1E2F31" strokeWidth={3} dot={{ r: 4, fill: '#1E2F31', strokeWidth: 2, stroke: '#fff' }} />
@@ -1731,7 +1960,7 @@ const PropCoDashboardView = memo(({ data, assumptions, generateTeaser, isTeaserL
 const PropCoCascadeView = memo(({ data, onExport }) => (
   <div className="space-y-6">
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in slide-in-from-bottom-4 duration-500">
-      <div className="md:col-span-1 bg-white p-5 lg:p-6 rounded-2xl shadow-sm border border-[#D8D8D8 h-fit">
+      <div className="md:col-span-1 bg-white p-5 lg:p-6 rounded-2xl shadow-sm border border-[#D8D8D8] h-fit">
         <h3 className="font-bold text-[#1E2F31] mb-4 flex items-center gap-2"><Map size={18} className="text-[#1C6048]"/> Development Budget</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-[11px] text-left border-collapse">
@@ -1870,8 +2099,8 @@ const ConsolidatedDashboardView = memo(({ data, assumptions, isPresenting }) => 
                   <XAxis dataKey="year" tick={{fontSize: 10, fill: '#4C4A4B'}} axisLine={false} />
                   <YAxis yAxisId="left" tick={{fontSize: 10, fill: '#4C4A4B'}} axisLine={false} tickFormatter={(val) => `${val}B`} />
                   <YAxis yAxisId="right" orientation="right" tick={{fontSize: 10, fill: '#1E2F31'}} axisLine={false} tickFormatter={(val) => `${val}B`} />
-                  <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #D8D8D8' }} formatter={(val) => formatNumber(val, 1) + "B"} />
-                  <Legend iconType="circle" wrapperStyle={{fontSize: '11px', paddingTop: '20px'}} />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(val) => formatNumber(val, 1) + "B"} />
+                  <Legend iconType="circle" wrapperStyle={LEGEND_STYLE} />
                   
                   <Bar yAxisId="left" stackId="a" dataKey="propCoFlow" name="PropCo FCFE" fill="#9B8B70" radius={[0, 0, 0, 0]} barSize={40} />
                   <Bar yAxisId="left" stackId="a" dataKey="opCoFlow" name="OpCo Dividend (49%)" fill="#1C6048" radius={[4, 4, 0, 0]} barSize={40} />
@@ -2165,11 +2394,11 @@ export default function App() {
   const containerClass = isPresenting ? "w-[98%] max-w-full mx-auto px-2" : "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8";
 
   // Navigation Logic
-  const handleGroupChange = (group) => {
+  const handleGroupChange = useCallback((group) => {
     setActiveGroup(group);
     if (group === 'context') setActiveTab('overview');
     else setActiveTab('dashboard');
-  };
+  }, []);
 
   // ==========================================
   // STABLE LOCAL-ONLY CLOUD SYNC BYPASS
@@ -2195,7 +2424,7 @@ export default function App() {
     return () => { isMounted = false; };
   }, [isCloudSync]);
 
-  const saveDefaultsToCloud = async (type) => {
+  const saveDefaultsToCloud = useCallback(async (type) => {
     if (!isCloudSync || cloudStatus !== 'online') return;
     const setStatus = type === 'opco' ? setSaveStatusOpCo : setSaveStatusPropCo;
     setStatus('saving');
@@ -2203,9 +2432,9 @@ export default function App() {
       setStatus('saved'); 
       setTimeout(() => setStatus('idle'), 3000);
     } catch (e) { setStatus('idle'); }
-  };
+  }, [isCloudSync, cloudStatus]);
 
-  const handleTextSelection = (e) => {
+  const handleTextSelection = useCallback((e) => {
     if (e.target.closest('#ai-selection-popup')) return;
     const selection = window.getSelection(); 
     const text = selection ? selection.toString().trim() : "";
@@ -2215,9 +2444,9 @@ export default function App() {
         let safeX = Math.max(160, Math.min(rect.left + window.scrollX + (rect.width / 2), document.body.clientWidth - 160));
         setSelectionState({ show: true, text, x: safeX, y: rect.top < 60 ? rect.bottom + window.scrollY + 20 : rect.top + window.scrollY - 60, isOpen: false, query: "", response: "", isLoading: false });
     } else { setSelectionState(p => p.isOpen ? p : { ...p, show: false }); }
-  };
+  }, []);
 
-  const handleSelectionAsk = async () => {
+  const handleSelectionAsk = useCallback(async () => {
     if (!selectionState.query.trim()) return;
     setSelectionState(p => ({...p, isLoading: true}));
     try { 
@@ -2225,44 +2454,50 @@ export default function App() {
       setSelectionState(p => ({...p, response: res})); 
     } catch (e) { setSelectionState(p => ({...p, response: "Error."})); } 
     finally { setSelectionState(p => ({...p, isLoading: false})); }
-  };
+  }, [selectionState.query]);
 
-  const handleOpCoChange = (k, v) => setOpCoAssumptions(p => ({ ...p, [k]: (v === "" ? 0 : parseFloat(v)) || 0 }));
-  const handlePropCoChange = (k, v) => setPropCoAssumptions(p => ({ ...p, [k]: ['linkToOpCo', 'includeMedEq', 'includeFFE', 'depMethodBuilding', 'depMethodMedEq', 'depMethodInfra', 'depMethodFFE', 'includeTerminalValue', 'exitMethod', 'includeFinancing'].includes(k) ? v : (v === "" ? 0 : parseFloat(v)) || 0 }));
+  const handleOpCoChange = useCallback((k, v) => setOpCoAssumptions(p => ({ ...p, [k]: (v === "" ? 0 : parseFloat(v)) || 0 })), []);
+  const handlePropCoChange = useCallback((k, v) => setPropCoAssumptions(p => ({ ...p, [k]: ['linkToOpCo', 'includeMedEq', 'includeFFE', 'depMethodBuilding', 'depMethodMedEq', 'depMethodInfra', 'depMethodFFE', 'includeTerminalValue', 'exitMethod', 'includeFinancing'].includes(k) ? v : (v === "" ? 0 : parseFloat(v)) || 0 })), []);
 
-  const syncEquityWithSharing = () => {
-    const t = opCoAssumptions.partnerAEquity + opCoAssumptions.partnerBEquity;
-    setOpCoAssumptions(p => ({ ...p, partnerAEquity: Number((t * (p.sharingPercentA / 100)).toFixed(2)), partnerBEquity: Number((t - (t * (p.sharingPercentA / 100))).toFixed(2)) }));
-  };
+  const syncEquityWithSharing = useCallback(() => {
+    setOpCoAssumptions(p => {
+        const t = p.partnerAEquity + p.partnerBEquity;
+        return { 
+            ...p, 
+            partnerAEquity: Number((t * (p.sharingPercentA / 100)).toFixed(2)), 
+            partnerBEquity: Number((t - (t * (p.sharingPercentA / 100))).toFixed(2)) 
+        };
+    });
+  }, []);
 
-  const generateTeaser = async () => {
+  const generateTeaser = useCallback(async () => {
       setIsTeaserLoading(true); setShowTeaser(true);
       try { 
         const res = await callGemini("Project Teaser", "Investment Banker");
         setTeaserContent(res || "Error."); 
       } catch(e) { setTeaserContent("Error."); } 
       setIsTeaserLoading(false);
-  };
+  }, []);
 
-  const generateAIInsights = async () => {
+  const generateAIInsights = useCallback(async () => {
     setIsAiLoading(true);
     try { 
       const res = await callGemini("Full Yield Audit", "Healthcare Investment Analyst");
       setAiInsights(res || "Error."); 
     } catch (e) { setAiInsights("Error."); } 
     finally { setIsAiLoading(false); }
-  };
+  }, []);
 
-  const validateAssumptions = async () => {
+  const validateAssumptions = useCallback(async () => {
       setIsMarketLoading(true); setShowMarketValidation(true);
       try { 
         const res = await callGemini("Assumptions check", "Healthcare feasibility consultant");
         setMarketValidation(res || "Error."); 
       } catch(e) { setMarketValidation("Error."); } 
       setIsMarketLoading(false);
-  };
+  }, []);
 
-  const handleAskAI = async () => {
+  const handleAskAI = useCallback(async () => {
     if (!askQuery.trim()) return;
     setIsAskLoading(true);
     try { 
@@ -2270,7 +2505,7 @@ export default function App() {
       setAskResponse(res || "Error."); 
     } catch(e) { setAskResponse("Error."); } 
     setIsAskLoading(false);
-  };
+  }, [askQuery]);
 
   return (
     <div className={`min-h-screen bg-[#F9F8F6] text-[#1E2F31] font-sans pb-12 relative text-xs`} onMouseUp={handleTextSelection}>
