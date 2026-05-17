@@ -12,7 +12,7 @@ import {
   AlertTriangle, Grid, Clock, Lock, Unlock, Info, MapPin, Building,
   Cloud, CloudOff, ChevronDown, GripHorizontal, Maximize, Minimize,
   BookOpen, Target, Search, FolderTree, BarChartHorizontal, Layers, Microscope,
-  Bed, Timer, Network, Plane, Dna, Bone, Baby, Eye, Check
+  Bed, Timer, Network, Plane, Dna, Bone, Baby, Eye, Check, ArrowRight
 } from 'lucide-react';
 
 const CHART_MARGINS_BAR = { top: 20, right: 0, left: 0, bottom: 0 };
@@ -1119,15 +1119,130 @@ const ProjectOverviewView = memo(({ info, setInfo, isLocked }) => (
 
 const CollaborationStrategyView = memo(({ isPresenting }) => (
   <div className="space-y-6 animate-in fade-in duration-500 pb-12">
-    <BentoBox colSpan="md:col-span-12" className="bg-white border-[#D8D8D8] min-h-[400px] flex flex-col items-center justify-center text-center">
-       <div className="p-6 bg-[#F9F8F6] rounded-full mb-6 border border-[#D8D8D8]">
-         <Network size={48} className="text-[#9B8B70] stroke-[1.5]" />
-       </div>
-       <h2 className="text-2xl font-black text-[#1E2F31] tracking-tight mb-3">Collaboration Strategy</h2>
-       <p className="text-sm text-[#4C4A4B] font-medium max-w-md">
-         This module is ready for your partnership frameworks, JV structures, and strategic alliances. Let me know when you want to brainstorm this section!
-       </p>
-    </BentoBox>
+    
+    {/* Strategy Header */}
+    <div className="bg-white rounded-[28px] p-6 lg:p-8 shadow-sm border border-[#D8D8D8] flex flex-col md:flex-row justify-between items-center gap-6">
+        <div>
+            <h2 className="text-2xl font-black text-[#1E2F31] tracking-tight mb-2 flex items-center gap-3">
+                <Network className="text-[#1C6048]" size={28}/> Cross-Border Patient Journey
+            </h2>
+            <p className="text-xs text-[#4C4A4B] font-medium max-w-2xl leading-relaxed">
+                A closed-loop collaboration model ensuring Vasanta captures maximum lifetime patient value through high-margin diagnostics and recurring therapies, while outsourcing only extreme-complexity interventions.
+            </p>
+        </div>
+    </div>
+
+    {/* 4-Card Flowchart Layout (1 Left, 2 Center, 1 Right) */}
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 relative">
+        
+        {/* LEFT COLUMN: Executive Diagnostics */}
+        <div className="flex flex-col h-full relative">
+            <BentoBox className="flex-1 text-center bg-white border-[#D8D8D8] flex flex-col items-center">
+                <h3 className="font-black text-[15px] text-[#1E2F31] mb-6">Executive Diagnostics</h3>
+                
+                {/* SVG Placeholder */}
+                <div className="flex-1 w-full flex items-center justify-center min-h-[140px] mb-8">
+                    <div className="w-32 h-32 rounded-2xl border-2 border-dashed border-[#D8D8D8] bg-[#F9F8F6] flex flex-col items-center justify-center text-[#9B8B70] opacity-70 transition-opacity hover:opacity-100">
+                        <Sparkles size={24} className="mb-2" />
+                        <span className="text-[10px] font-bold uppercase tracking-widest">SVG Here</span>
+                    </div>
+                </div>
+
+                <p className="text-[11px] text-[#4C4A4B] leading-relaxed font-medium mt-auto bg-[#F9F8F6] p-4 rounded-xl border border-[#D8D8D8] w-full">
+                    High-margin PET-CT and genomic screening act as the primary acquisition funnel locally.
+                </p>
+            </BentoBox>
+            
+            {/* Mobile Down Arrow (Visible only on mobile/tablet) */}
+            <div className="lg:hidden absolute -bottom-5 left-1/2 -translate-x-1/2 w-8 h-8 bg-[#1C6048] border-4 border-[#F9F8F6] rounded-full flex items-center justify-center shadow-md z-10 text-white">
+                <ArrowRight size={14} strokeWidth={3} className="rotate-90" />
+            </div>
+        </div>
+
+        {/* CENTER COLUMN: 2 Stacked Cards */}
+        <div className="flex flex-col gap-6 h-full relative">
+            
+            {/* Left-to-Center Connection Arrows (Desktop Only) */}
+            <div className="hidden lg:flex absolute -left-7 top-[25%] -translate-y-1/2 w-8 h-8 bg-[#1C6048] border-4 border-[#F9F8F6] rounded-full items-center justify-center shadow-md z-10 text-white">
+                <ArrowRight size={14} strokeWidth={3} />
+            </div>
+            <div className="hidden lg:flex absolute -left-7 top-[75%] -translate-y-1/2 w-8 h-8 bg-[#1C6048] border-4 border-[#F9F8F6] rounded-full items-center justify-center shadow-md z-10 text-white">
+                <ArrowRight size={14} strokeWidth={3} />
+            </div>
+
+            {/* Center-to-Right Connection Arrows (Desktop Only) */}
+            <div className="hidden lg:flex absolute -right-7 top-[25%] -translate-y-1/2 w-8 h-8 bg-[#1C6048] border-4 border-[#F9F8F6] rounded-full items-center justify-center shadow-md z-10 text-white">
+                <ArrowRight size={14} strokeWidth={3} />
+            </div>
+            <div className="hidden lg:flex absolute -right-7 top-[75%] -translate-y-1/2 w-8 h-8 bg-[#1C6048] border-4 border-[#F9F8F6] rounded-full items-center justify-center shadow-md z-10 text-white">
+                <ArrowRight size={14} strokeWidth={3} />
+            </div>
+
+            {/* Middle Mobile Down Arrow (Visible only on mobile/tablet) */}
+            <div className="lg:hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-[#1C6048] border-4 border-[#F9F8F6] rounded-full flex items-center justify-center shadow-md z-10 text-white">
+                <ArrowRight size={14} strokeWidth={3} className="rotate-90" />
+            </div>
+
+            {/* Top Center: Local Systemic */}
+            <BentoBox className="flex-1 text-center bg-white border-[#D8D8D8] flex flex-col items-center">
+                <h3 className="font-black text-[15px] text-[#1E2F31] mb-4">Local Systemic & LINAC</h3>
+                
+                {/* SVG Placeholder */}
+                <div className="flex-1 w-full flex items-center justify-center min-h-[100px] mb-6">
+                    <div className="w-24 h-24 rounded-2xl border-2 border-dashed border-[#D8D8D8] bg-[#F9F8F6] flex flex-col items-center justify-center text-[#1C6048] opacity-70 transition-opacity hover:opacity-100">
+                        <Sparkles size={20} className="mb-2" />
+                        <span className="text-[9px] font-bold uppercase tracking-widest">SVG Here</span>
+                    </div>
+                </div>
+
+                <p className="text-[11px] text-[#4C4A4B] leading-relaxed font-medium mt-auto bg-[#E8EFEA] p-4 rounded-xl border border-[#1C6048]/20 w-full">
+                    Most vast majority of cases require 30-day radiotherapy cycles or standard chemotherapy. Geographic inelasticity forces these patients to utilize our highly profitable local bunkers and VIP infusion suites.
+                </p>
+            </BentoBox>
+
+            {/* Bottom Center: Overseas Partner */}
+            <BentoBox className="flex-1 text-center bg-white border-[#D8D8D8] flex flex-col items-center">
+                <h3 className="font-black text-[15px] text-[#1E2F31] mb-4">Overseas Partner</h3>
+                
+                {/* SVG Placeholder */}
+                <div className="flex-1 w-full flex items-center justify-center min-h-[100px] mb-6">
+                    <div className="w-24 h-24 rounded-2xl border-2 border-dashed border-[#D8D8D8] bg-[#F9F8F6] flex flex-col items-center justify-center text-[#4C4A4B] opacity-70 transition-opacity hover:opacity-100">
+                        <Sparkles size={20} className="mb-2" />
+                        <span className="text-[9px] font-bold uppercase tracking-widest">SVG Here</span>
+                    </div>
+                </div>
+
+                <p className="text-[11px] text-[#4C4A4B] leading-relaxed font-medium mt-auto bg-[#EFEBE7] p-4 rounded-xl border border-[#D8D8D8] w-full">
+                    Only ultra-complex surgical cases are referred out, leveraging industrial trust without cannibalizing core local EBITDA.
+                </p>
+            </BentoBox>
+
+            {/* Mobile Down Arrow (Visible only on mobile/tablet) */}
+            <div className="lg:hidden absolute -bottom-5 left-1/2 -translate-x-1/2 w-8 h-8 bg-[#1C6048] border-4 border-[#F9F8F6] rounded-full flex items-center justify-center shadow-md z-10 text-white">
+                <ArrowRight size={14} strokeWidth={3} className="rotate-90" />
+            </div>
+        </div>
+
+        {/* RIGHT COLUMN: Repatriation & Palliative */}
+        <div className="flex flex-col h-full">
+            <BentoBox className="flex-1 text-center bg-white border-[#D8D8D8] flex flex-col items-center">
+                <h3 className="font-black text-[15px] text-[#1E2F31] mb-6">Repatriation & Palliative</h3>
+                
+                {/* SVG Placeholder */}
+                <div className="flex-1 w-full flex items-center justify-center min-h-[140px] mb-8">
+                    <div className="w-32 h-32 rounded-2xl border-2 border-dashed border-[#D8D8D8] bg-[#F9F8F6] flex flex-col items-center justify-center text-[#9B8B70] opacity-70 transition-opacity hover:opacity-100">
+                        <Sparkles size={24} className="mb-2" />
+                        <span className="text-[10px] font-bold uppercase tracking-widest">SVG Here</span>
+                    </div>
+                </div>
+
+                <p className="text-[11px] text-[#4C4A4B] leading-relaxed font-medium mt-auto bg-[#F9F8F6] p-4 rounded-xl border border-[#D8D8D8] w-full">
+                    All overseas patients are mandated to return to the local hospital for multi-year monitoring, recovery, and high-margin palliative care.
+                </p>
+            </BentoBox>
+        </div>
+
+    </div>
   </div>
 ));
 
