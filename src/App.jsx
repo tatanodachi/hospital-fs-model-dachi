@@ -2525,7 +2525,7 @@ function AIAuditView({ aiInsights, isAiLoading, generateAIInsights, askQuery, se
 export default function App() {
   const [activeGroup, setActiveGroup] = useState('context'); // 'context' or 'financials'
   const [activeCompany, setActiveCompany] = useState('opco'); 
-  const [activeTab, setActiveTab] = useState('study'); 
+  const [activeTab, setActiveTab] = useState('overview'); 
   const [isLockedOpCo, setIsLockedOpCo] = useState(true);
   const [isLockedPropCo, setIsLockedPropCo] = useState(true);
   const [isPresenting, setIsPresenting] = useState(false);
