@@ -1159,8 +1159,8 @@ const CollaborationStrategyView = memo(({ isPresenting }) => (
             </div>
         </div>
 
-        {/* CENTER COLUMN: 2 Stacked Cards */}
-        <div className="flex flex-col gap-6 lg:gap-10 h-full relative z-10">
+        {/* CENTER COLUMN: 2 Stacked Cards (Elevated to z-20 to pull arrows forward) */}
+        <div className="flex flex-col gap-6 lg:gap-10 h-full relative z-20">
             
             {/* Left-to-Center Branching Arrow (Desktop Only) */}
             <div className="hidden lg:block absolute -left-10 top-[26%] bottom-[26%] w-10 z-0 pointer-events-none">
@@ -2538,7 +2538,7 @@ export default function App() {
   const [projectInfo, setProjectInfo] = useState({ 
     name: "Vasanta Hospital Development", 
     location: "Tangerang, Banten", 
-    type: "General Hospital (Class B)", 
+    type: "Specialized Hospital (Class A)", 
     totalLand: "12,643 Sqm", 
     totalBuilding: "13,000 Sqm", 
     status: "Planning / Feasibility Phase" 
