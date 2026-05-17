@@ -1133,10 +1133,10 @@ const CollaborationStrategyView = memo(({ isPresenting }) => (
     </div>
 
     {/* 4-Card Flowchart Layout (1 Left, 2 Center, 1 Right) */}
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 relative">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-10 relative mt-4">
         
         {/* LEFT COLUMN: Executive Diagnostics */}
-        <div className="flex flex-col h-full relative">
+        <div className="flex flex-col h-full relative z-10">
             <BentoBox className="flex-1 text-center bg-white border-[#D8D8D8] flex flex-col items-center">
                 <h3 className="font-black text-[15px] text-[#1E2F31] mb-6">Executive Diagnostics</h3>
                 
@@ -1154,32 +1154,31 @@ const CollaborationStrategyView = memo(({ isPresenting }) => (
             </BentoBox>
             
             {/* Mobile Down Arrow (Visible only on mobile/tablet) */}
-            <div className="lg:hidden absolute -bottom-5 left-1/2 -translate-x-1/2 w-8 h-8 bg-[#1C6048] border-4 border-[#F9F8F6] rounded-full flex items-center justify-center shadow-md z-10 text-white">
+            <div className="lg:hidden absolute -bottom-5 left-1/2 -translate-x-1/2 w-8 h-8 bg-[#9B8B70] border-4 border-[#F9F8F6] rounded-full flex items-center justify-center shadow-md z-10 text-white">
                 <ArrowRight size={14} strokeWidth={3} className="rotate-90" />
             </div>
         </div>
 
         {/* CENTER COLUMN: 2 Stacked Cards */}
-        <div className="flex flex-col gap-6 h-full relative">
+        <div className="flex flex-col gap-6 lg:gap-10 h-full relative z-10">
             
-            {/* Left-to-Center Connection Arrows (Desktop Only) */}
-            <div className="hidden lg:flex absolute -left-7 top-[25%] -translate-y-1/2 w-8 h-8 bg-[#1C6048] border-4 border-[#F9F8F6] rounded-full items-center justify-center shadow-md z-10 text-white">
-                <ArrowRight size={14} strokeWidth={3} />
-            </div>
-            <div className="hidden lg:flex absolute -left-7 top-[75%] -translate-y-1/2 w-8 h-8 bg-[#1C6048] border-4 border-[#F9F8F6] rounded-full items-center justify-center shadow-md z-10 text-white">
-                <ArrowRight size={14} strokeWidth={3} />
+            {/* Left-to-Center Branching Arrow (Desktop Only) */}
+            <div className="hidden lg:block absolute -left-10 top-[26%] bottom-[26%] w-10 z-0 pointer-events-none">
+                <div className="absolute top-1/2 left-0 w-5 border-t-2 border-[#9B8B70] -translate-y-[1px]"></div>
+                <div className="absolute top-0 bottom-0 left-5 w-5 border-y-2 border-l-2 border-[#9B8B70] rounded-l-xl shadow-[-2px_0_4px_rgba(0,0,0,0.05)]"></div>
+                <ArrowRight size={18} className="absolute -top-[9px] -right-[7px] text-[#9B8B70]" strokeWidth={3} />
+                <ArrowRight size={18} className="absolute -bottom-[9px] -right-[7px] text-[#9B8B70]" strokeWidth={3} />
             </div>
 
-            {/* Center-to-Right Connection Arrows (Desktop Only) */}
-            <div className="hidden lg:flex absolute -right-7 top-[25%] -translate-y-1/2 w-8 h-8 bg-[#1C6048] border-4 border-[#F9F8F6] rounded-full items-center justify-center shadow-md z-10 text-white">
-                <ArrowRight size={14} strokeWidth={3} />
-            </div>
-            <div className="hidden lg:flex absolute -right-7 top-[75%] -translate-y-1/2 w-8 h-8 bg-[#1C6048] border-4 border-[#F9F8F6] rounded-full items-center justify-center shadow-md z-10 text-white">
-                <ArrowRight size={14} strokeWidth={3} />
+            {/* Center-to-Right Merging Arrow (Desktop Only) */}
+            <div className="hidden lg:block absolute -right-10 top-[26%] bottom-[26%] w-10 z-0 pointer-events-none">
+                <div className="absolute top-0 bottom-0 right-5 w-5 border-y-2 border-r-2 border-[#9B8B70] rounded-r-xl shadow-[2px_0_4px_rgba(0,0,0,0.05)]"></div>
+                <div className="absolute top-1/2 right-0 w-5 border-t-2 border-[#9B8B70] -translate-y-[1px]"></div>
+                <ArrowRight size={18} className="absolute top-1/2 -mt-[9px] -right-[7px] text-[#9B8B70]" strokeWidth={3} />
             </div>
 
             {/* Middle Mobile Down Arrow (Visible only on mobile/tablet) */}
-            <div className="lg:hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-[#1C6048] border-4 border-[#F9F8F6] rounded-full flex items-center justify-center shadow-md z-10 text-white">
+            <div className="lg:hidden absolute top-[calc(50%-20px)] left-1/2 -translate-x-1/2 w-8 h-8 bg-[#9B8B70] border-4 border-[#F9F8F6] rounded-full flex items-center justify-center shadow-md z-10 text-white">
                 <ArrowRight size={14} strokeWidth={3} className="rotate-90" />
             </div>
 
@@ -1218,13 +1217,13 @@ const CollaborationStrategyView = memo(({ isPresenting }) => (
             </BentoBox>
 
             {/* Mobile Down Arrow (Visible only on mobile/tablet) */}
-            <div className="lg:hidden absolute -bottom-5 left-1/2 -translate-x-1/2 w-8 h-8 bg-[#1C6048] border-4 border-[#F9F8F6] rounded-full flex items-center justify-center shadow-md z-10 text-white">
+            <div className="lg:hidden absolute -bottom-5 left-1/2 -translate-x-1/2 w-8 h-8 bg-[#9B8B70] border-4 border-[#F9F8F6] rounded-full flex items-center justify-center shadow-md z-10 text-white">
                 <ArrowRight size={14} strokeWidth={3} className="rotate-90" />
             </div>
         </div>
 
         {/* RIGHT COLUMN: Repatriation & Palliative */}
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full relative z-10">
             <BentoBox className="flex-1 text-center bg-white border-[#D8D8D8] flex flex-col items-center">
                 <h3 className="font-black text-[15px] text-[#1E2F31] mb-6">Repatriation & Palliative</h3>
                 
