@@ -27,6 +27,19 @@ const formatCancerCases = (val) => new Intl.NumberFormat('en-US').format(val);
 const formatInsuranceTooltip = (val) => val.toFixed(2) + "T IDR";
 const formatInsuranceLabel = (val) => val.toFixed(2);
 const LINE_LABEL_STYLE = { position: 'top', fill: '#4C4A4B', fontSize: 10, dy: -10, formatter: formatInsuranceLabel };
+
+const renderPieLabel = ({ cx, cy, midAngle, outerRadius, percent, index, name }) => {
+  const RADIAN = Math.PI / 180;
+  const radius = outerRadius * 1.25;
+  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+  return (
+    <text x={x} y={y} fill={index === 0 ? '#9B8B70' : '#8A9A9C'} textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" fontSize={10} fontWeight="bold">
+      <tspan x={x} dy="-0.4em">{name}</tspan>
+      <tspan x={x} dy="1.2em">{`${(percent * 100).toFixed(0)}%`}</tspan>
+    </text>
+  );
+};
 // ---------------------------------------------------
 
 const formatNumber = (val, decimals = 1) => {
@@ -1104,6 +1117,20 @@ const ProjectOverviewView = memo(({ info, setInfo, isLocked }) => (
   </div>
 ));
 
+const CollaborationStrategyView = memo(({ isPresenting }) => (
+  <div className="space-y-6 animate-in fade-in duration-500 pb-12">
+    <BentoBox colSpan="md:col-span-12" className="bg-white border-[#D8D8D8] min-h-[400px] flex flex-col items-center justify-center text-center">
+       <div className="p-6 bg-[#F9F8F6] rounded-full mb-6 border border-[#D8D8D8]">
+         <Network size={48} className="text-[#9B8B70] stroke-[1.5]" />
+       </div>
+       <h2 className="text-2xl font-black text-[#1E2F31] tracking-tight mb-3">Collaboration Strategy</h2>
+       <p className="text-sm text-[#4C4A4B] font-medium max-w-md">
+         This module is ready for your partnership frameworks, JV structures, and strategic alliances. Let me know when you want to brainstorm this section!
+       </p>
+    </BentoBox>
+  </div>
+));
+
 const StudyView = memo(({ isPresenting, info }) => {
   const [activeMiniTab, setActiveMiniTab] = useState('marketGap');
 
@@ -1112,8 +1139,9 @@ const StudyView = memo(({ isPresenting, info }) => {
         {/* Navigation Bar for Study */}
         <div className="flex bg-white p-1.5 rounded-2xl border border-[#D8D8D8] shadow-sm w-fit overflow-x-auto max-w-full">
           <button 
-            onClick={() => setActiveMiniTab('macro')} 
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-[14px] text-xs font-bold transition-all whitespace-nowrap ${activeMiniTab === 'macro' ? 'bg-[#1C6048] text-white shadow-md' : 'text-[#4C4A4B] hover:text-[#1E2F31] hover:bg-[#EFEBE7]/50'}`}
+            disabled
+            className="flex items-center gap-2 px-5 py-2.5 rounded-[14px] text-xs font-bold transition-all whitespace-nowrap text-[#4C4A4B] opacity-40 cursor-not-allowed bg-gray-50"
+            title="Coming Soon"
           >
             <Map size={16}/> Macro Environment
           </button>
@@ -1290,41 +1318,61 @@ const StudyView = memo(({ isPresenting, info }) => {
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6 animate-in fade-in zoom-in-95 duration-300">
              
              {/* Target Demographics Bento */}
-             <BentoBox colSpan="md:col-span-4" className="bg-[#1E2F31] text-white border-transparent flex flex-col">
-                 <BentoIcon icon={<Users size={28}/>} color="emerald" className="bg-white/20 text-white"/>
-                 <h2 className="text-xl font-black text-white tracking-tight mb-6">Target Demographics</h2>
-                 <div className="space-y-4 flex-1 flex flex-col">
-                    
-                    <div className="flex justify-between items-center bg-white/5 p-4 rounded-2xl border border-white/10">
-                       <div>
-                          <p className="text-[10px] text-white/70 font-bold uppercase tracking-wider mb-1">Total Catchment</p>
-                          <p className="text-2xl font-black">3.2M <span className="text-sm font-medium text-white/70">Lives</span></p>
-                       </div>
-                       <Map size={28} className="text-white/20" strokeWidth={1.5}/>
-                    </div>
-                    
-                    <div className="bg-gradient-to-br from-white/10 to-transparent p-5 rounded-2xl border border-white/10 relative overflow-hidden flex-1 flex flex-col justify-center">
-                       <div className="relative z-10">
-                           <div className="flex justify-between items-end mb-4">
-                               <div>
-                                   <p className="text-[10px] text-[#99B6AA] font-bold uppercase tracking-wider mb-1">SES A & B (Premium)</p>
-                                   <p className="text-4xl font-black text-[#9B8B70]">~18<span className="text-2xl">%</span></p>
-                               </div>
-                               <div className="text-right">
-                                   <p className="text-[10px] text-white/70 font-bold uppercase tracking-wider mb-1">Addressable</p>
-                                   <p className="text-xl font-bold text-white">576k</p>
-                               </div>
-                           </div>
-                           <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
-                               <div className="h-full bg-[#9B8B70] w-[18%] rounded-full shadow-[0_0_10px_rgba(155,139,112,0.8)]"></div>
-                           </div>
-                       </div>
-                       <PieChartIcon size={100} className="absolute -right-4 -bottom-4 text-white/5 pointer-events-none transform -rotate-12" strokeWidth={1}/>
-                    </div>
+             <BentoBox colSpan="md:col-span-4" className="bg-white border-[#D8D8D8] flex flex-col">
+                 <BentoIcon icon={<Users size={28}/>} color="emerald" />
+                 <h2 className="text-xl font-black text-[#1E2F31] tracking-tight mb-6">Target Demographics</h2>
+                 
+                 <div className="flex-1 flex flex-col bg-[#F9F8F6] rounded-2xl border border-[#D8D8D8] p-5 relative overflow-hidden mb-4">
+                     <h3 className="text-[11px] text-[#1C6048] font-bold uppercase tracking-wider text-center mb-2">Premium Addressable Market</h3>
+                     
+                     <div className="flex-1 min-h-[180px] relative w-full flex items-center justify-center my-4">
+                         <ResponsiveContainer width="100%" height="100%">
+                             <PieChart>
+                                 <Pie 
+                                    data={[{name: 'SES A & B', value: 18}, {name: 'General / BPJS', value: 82}]} 
+                                    cx="50%" cy="50%" 
+                                    startAngle={90} endAngle={-270} 
+                                    innerRadius="40%" outerRadius="60%" 
+                                    dataKey="value" stroke="none"
+                                    label={renderPieLabel}
+                                    labelLine={{ stroke: '#D8D8D8', strokeWidth: 1 }}
+                                    className="outline-none"
+                                 >
+                                     <Cell fill="#9B8B70" />
+                                     <Cell fill="#294043" />
+                                 </Pie>
+                                 <Tooltip 
+                                    cursor={{fill: 'transparent'}}
+                                    contentStyle={{ borderRadius: '8px', border: '1px solid #D8D8D8', backgroundColor: '#fff', color: '#1E2F31', fontSize: '11px', fontWeight: 'bold' }} 
+                                    itemStyle={{ color: '#1E2F31' }}
+                                    formatter={(val) => `${val}%`}
+                                 />
+                             </PieChart>
+                         </ResponsiveContainer>
+                     </div>
 
-                    <p className="text-[11px] text-white/80 leading-relaxed font-medium mt-auto bg-white/5 p-4 rounded-xl border border-white/10">
-                      A highly concentrated premium demographic pool, perfectly correlated with commercial health insurance ownership and medical tourism expenditure.
-                    </p>
+                     <div className="grid grid-cols-2 gap-4 w-full border-t border-[#D8D8D8] pt-5 mt-auto">
+                         <div className="flex flex-col justify-between text-center border-r border-[#D8D8D8] h-full">
+                             <p className="text-[10px] text-[#4C4A4B] font-bold uppercase tracking-wider mb-2">Total Catchment</p>
+                             <p className="text-xl font-black text-[#1E2F31] leading-none">3.2M</p>
+                         </div>
+                         <div className="flex flex-col justify-between text-center h-full">
+                             <p className="text-[10px] text-[#9B8B70] font-bold uppercase tracking-wider mb-2">SES A & B</p>
+                             <p className="text-xl font-black text-[#9B8B70] leading-none">576k</p>
+                         </div>
+                     </div>
+                 </div>
+
+                 <div className="bg-[#EFEBE7] p-4 rounded-xl border border-[#D8D8D8] space-y-3 mt-auto">
+                     <div>
+                        <p className="text-[10px] font-bold text-[#1E2F31] uppercase tracking-widest mb-1">What is SES A & B?</p>
+                        <p className="text-[10px] text-[#4C4A4B] leading-relaxed font-medium">Socio-Economic Status (SES) A & B represents the upper-middle to affluent class, highly correlated with private health insurance and medical tourism spending.</p>
+                     </div>
+                     <div className="w-full h-px bg-[#D8D8D8]"></div>
+                     <div>
+                        <p className="text-[10px] font-bold text-[#1C6048] uppercase tracking-widest mb-1">Deriving 576k Lives</p>
+                        <p className="text-[10px] text-[#4C4A4B] leading-relaxed font-medium">Calculated directly by capturing exactly <strong className="text-[#1E2F31]">18%</strong> of the <strong className="text-[#1E2F31]">3.2 Million</strong> total regional catchment population.</p>
+                     </div>
                  </div>
              </BentoBox>
 
@@ -2623,12 +2671,14 @@ export default function App() {
               <h1 className="text-xl font-bold flex items-center gap-2 text-[#1E2F31]">
                 {activeTab === 'overview' ? <Info className="text-[#1C6048]" /> : 
                  activeTab === 'study' ? <BookOpen className="text-[#1C6048]" /> :
+                 activeTab === 'collab' ? <Network className="text-[#1C6048]" /> :
                  activeCompany === 'opco' ? <Activity className="text-[#1C6048]" /> : 
                  activeCompany === 'propco' ? <Building2 className="text-[#9B8B70]" /> : 
                  <Layers className="text-[#1E2F31]" />} 
 
                 {activeTab === 'overview' ? "Project Context" : 
                  activeTab === 'study' ? "Feasibility Study" :
+                 activeTab === 'collab' ? "Collaboration Strategy" :
                  activeCompany === 'opco' ? "Hospital Operation Model" : 
                  activeCompany === 'propco' ? "PropCo Real Estate Model" :
                  "HoldCo Consolidated Position"}
@@ -2641,6 +2691,7 @@ export default function App() {
                 <>
                   <NavButton active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} icon={<FileText size={14} />} label="Overview" />
                   <NavButton active={activeTab === 'study'} onClick={() => setActiveTab('study')} icon={<BookOpen size={14} />} label="Study" />
+                  <NavButton active={activeTab === 'collab'} onClick={() => setActiveTab('collab')} icon={<Network size={14} />} label="Collaboration Strategy" />
                 </>
               ) : (
                 <>
@@ -2664,8 +2715,9 @@ export default function App() {
       <main className={`transition-all duration-300 ${containerClass} ${isPresenting ? 'mt-4' : 'mt-6'}`}>
         {activeTab === 'overview' && <ProjectOverviewView info={projectInfo} setInfo={setProjectInfo} isLocked={activeCompany === 'opco' ? isLockedOpCo : isLockedPropCo} />}
         {activeTab === 'study' && <StudyView isPresenting={isPresenting} info={projectInfo} />}
+        {activeTab === 'collab' && <CollaborationStrategyView isPresenting={isPresenting} />}
         
-        {activeTab !== 'overview' && activeTab !== 'study' && activeTab !== 'ai' && activeCompany === 'opco' && activeGroup === 'financials' && (
+        {activeTab !== 'overview' && activeTab !== 'study' && activeTab !== 'collab' && activeTab !== 'ai' && activeCompany === 'opco' && activeGroup === 'financials' && (
             <div className="animate-in fade-in duration-500">
                 {activeTab === 'dashboard' && <OpCoDashboardView data={opCoModelData} assumptions={opCoAssumptions} generateTeaser={generateTeaser} isTeaserLoading={isTeaserLoading} showTeaser={showTeaser} setShowTeaser={setShowTeaser} teaserContent={teaserContent} isPresenting={isPresenting} />}
                 {activeTab === 'comprehensive' && <OpCoCascadeView data={opCoModelData} assumptions={opCoAssumptions} />}
@@ -2674,7 +2726,7 @@ export default function App() {
             </div>
         )}
         
-        {activeTab !== 'overview' && activeTab !== 'study' && activeTab !== 'ai' && activeCompany === 'propco' && activeGroup === 'financials' && (
+        {activeTab !== 'overview' && activeTab !== 'study' && activeTab !== 'collab' && activeTab !== 'ai' && activeCompany === 'propco' && activeGroup === 'financials' && (
             <div className="animate-in fade-in duration-500">
                 {activeTab === 'dashboard' && <PropCoDashboardView data={propCoModelData} assumptions={propCoAssumptions} generateTeaser={generateTeaser} isTeaserLoading={isTeaserLoading} showTeaser={showTeaser} setShowTeaser={setShowTeaser} teaserContent={teaserContent} setTab={setActiveTab} isPresenting={isPresenting} />}
                 {activeTab === 'comprehensive' && <PropCoCascadeView data={propCoModelData} onExport={() => {}} />}
@@ -2683,7 +2735,7 @@ export default function App() {
             </div>
         )}
 
-        {activeTab !== 'overview' && activeTab !== 'study' && activeTab !== 'ai' && activeCompany === 'consolidated' && activeGroup === 'financials' && (
+        {activeTab !== 'overview' && activeTab !== 'study' && activeTab !== 'collab' && activeTab !== 'ai' && activeCompany === 'consolidated' && activeGroup === 'financials' && (
             <div className="animate-in fade-in duration-500">
                 {activeTab === 'dashboard' && <ConsolidatedDashboardView data={consolidatedModelData} assumptions={opCoAssumptions} isPresenting={isPresenting} />}
                 {activeTab === 'comprehensive' && <ConsolidatedCascadeView data={consolidatedModelData} />}
