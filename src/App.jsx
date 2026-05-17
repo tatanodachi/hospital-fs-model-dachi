@@ -1290,21 +1290,39 @@ const StudyView = memo(({ isPresenting, info }) => {
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6 animate-in fade-in zoom-in-95 duration-300">
              
              {/* Target Demographics Bento */}
-             <BentoBox colSpan="md:col-span-4" className="bg-[#1E2F31] text-white border-transparent">
+             <BentoBox colSpan="md:col-span-4" className="bg-[#1E2F31] text-white border-transparent flex flex-col">
                  <BentoIcon icon={<Users size={28}/>} color="emerald" className="bg-white/20 text-white"/>
                  <h2 className="text-xl font-black text-white tracking-tight mb-6">Target Demographics</h2>
-                 <div className="space-y-6 flex-1">
-                    <div>
-                       <p className="text-[11px] text-white/70 font-bold uppercase tracking-wider mb-1">Total Catchment</p>
-                       <p className="text-3xl font-black">3.2M <span className="text-sm font-medium text-white/70">Lives</span></p>
+                 <div className="space-y-4 flex-1 flex flex-col">
+                    
+                    <div className="flex justify-between items-center bg-white/5 p-4 rounded-2xl border border-white/10">
+                       <div>
+                          <p className="text-[10px] text-white/70 font-bold uppercase tracking-wider mb-1">Total Catchment</p>
+                          <p className="text-2xl font-black">3.2M <span className="text-sm font-medium text-white/70">Lives</span></p>
+                       </div>
+                       <Map size={28} className="text-white/20" strokeWidth={1.5}/>
                     </div>
-                    <div className="w-full h-px bg-white/20"></div>
-                    <div>
-                       <p className="text-[11px] text-[#99B6AA] font-bold uppercase tracking-wider mb-1">SES A & B (Premium Target)</p>
-                       <p className="text-4xl font-black text-[#9B8B70]">~18%</p>
-                       <p className="text-sm font-bold mt-1">576,000 Addressable Patients</p>
+                    
+                    <div className="bg-gradient-to-br from-white/10 to-transparent p-5 rounded-2xl border border-white/10 relative overflow-hidden flex-1 flex flex-col justify-center">
+                       <div className="relative z-10">
+                           <div className="flex justify-between items-end mb-4">
+                               <div>
+                                   <p className="text-[10px] text-[#99B6AA] font-bold uppercase tracking-wider mb-1">SES A & B (Premium)</p>
+                                   <p className="text-4xl font-black text-[#9B8B70]">~18<span className="text-2xl">%</span></p>
+                               </div>
+                               <div className="text-right">
+                                   <p className="text-[10px] text-white/70 font-bold uppercase tracking-wider mb-1">Addressable</p>
+                                   <p className="text-xl font-bold text-white">576k</p>
+                               </div>
+                           </div>
+                           <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+                               <div className="h-full bg-[#9B8B70] w-[18%] rounded-full shadow-[0_0_10px_rgba(155,139,112,0.8)]"></div>
+                           </div>
+                       </div>
+                       <PieChartIcon size={100} className="absolute -right-4 -bottom-4 text-white/5 pointer-events-none transform -rotate-12" strokeWidth={1}/>
                     </div>
-                    <p className="text-[11px] text-white/80 leading-relaxed font-medium mt-auto bg-white/10 p-4 rounded-xl border border-white/20">
+
+                    <p className="text-[11px] text-white/80 leading-relaxed font-medium mt-auto bg-white/5 p-4 rounded-xl border border-white/10">
                       A highly concentrated premium demographic pool, perfectly correlated with commercial health insurance ownership and medical tourism expenditure.
                     </p>
                  </div>
