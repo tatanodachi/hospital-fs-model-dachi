@@ -563,6 +563,18 @@ const runConsolidatedEngine = (opCoData, propCoData, opCoAssumptions) => {
         });
     });
 
+    const totals = {
+        propCoFlow: annualData.reduce((acc, d) => acc + d.propCoFlow, 0),
+        opCoOperatingFlow: annualData.reduce((acc, d) => acc + d.opCoOperatingFlow, 0),
+        opCoExitFlow: annualData.reduce((acc, d) => acc + d.opCoExitFlow, 0),
+        opCoFlow: annualData.reduce((acc, d) => acc + d.opCoFlow, 0),
+        netFlow: annualData.reduce((acc, d) => acc + d.netFlow, 0),
+        lookThroughRevenue: annualData.reduce((acc, d) => acc + (d.lookThroughRevenue || 0), 0),
+        lookThroughEbitda: annualData.reduce((acc, d) => acc + (d.lookThroughEbitda || 0), 0),
+        lookThroughNetIncome: annualData.reduce((acc, d) => acc + (d.lookThroughNetIncome || 0), 0),
+    };
+    totals.lookThroughMargin = totals.lookThroughRevenue > 0 ? (totals.lookThroughNetIncome / totals.lookThroughRevenue) * 100 : 0;
+
     return {
         annualData,
         operatingData: annualData.filter(d => d.isOperating),
@@ -573,16 +585,7 @@ const runConsolidatedEngine = (opCoData, propCoData, opCoAssumptions) => {
             payback: calculatePayback(consolidatedCfs),
             moic: totalConsolidatedEquity > 0 ? consolidatedCfs.reduce((acc, val) => val > 0 ? acc + val : acc, 0) / totalConsolidatedEquity : 0
         },
-        totals: {
-            propCoFlow: annualData.reduce((acc, d) => acc + d.propCoFlow, 0),
-            opCoOperatingFlow: annualData.reduce((acc, d) => acc + d.opCoOperatingFlow, 0),
-            opCoExitFlow: annualData.reduce((acc, d) => acc + d.opCoExitFlow, 0),
-            opCoFlow: annualData.reduce((acc, d) => acc + d.opCoFlow, 0),
-            netFlow: annualData.reduce((acc, d) => acc + d.netFlow, 0),
-            lookThroughRevenue: annualData.reduce((acc, d) => acc + (d.lookThroughRevenue || 0), 0),
-            lookThroughEbitda: annualData.reduce((acc, d) => acc + (d.lookThroughEbitda || 0), 0),
-            lookThroughNetIncome: annualData.reduce((acc, d) => acc + (d.lookThroughNetIncome || 0), 0),
-        }
+        totals
     };
 };
 
@@ -712,6 +715,136 @@ const CustomPopulationIcon = memo(({ size = 24, className = "" }) => (
             <circle cx={x} cy="46" r="3.5" fill="#EFEBE7" />
         </g>
     ))}
+  </svg>
+));
+
+const CustomDiagnosticsIcon = memo(({ size = 24, className = "" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    {/* Floor Base */}
+    <line x1="4" y1="60" x2="60" y2="60" strokeWidth="3" />
+    <rect x="18" y="56" width="28" height="4" fill="currentColor" stroke="none" />
+    
+    {/* Outer Scanner Body (Tall Pill Shape) */}
+    <rect x="10" y="4" width="44" height="52" rx="20" strokeWidth="2.5" />
+    
+    {/* High-Tech Ticked Ring Array */}
+    <circle cx="32" cy="26" r="16" strokeDasharray="1.5 2.5" strokeWidth="2" opacity="0.6" />
+    <circle cx="32" cy="26" r="13" />
+    
+    {/* Targeting Crosshair */}
+    <line x1="12" y1="26" x2="52" y2="26" strokeDasharray="2 3" opacity="0.4" />
+    <line x1="32" y1="6" x2="32" y2="46" strokeDasharray="2 3" opacity="0.4" />
+    <circle cx="32" cy="26" r="3" />
+    
+    {/* Bed Pedestal (Solid silhouette) */}
+    <path d="M 27.5 40 L 36.5 40 L 40 60 L 24 60 Z" fill="currentColor" stroke="none" opacity="0.9" />
+    
+    {/* Sliding Patient Bed (Perspective) */}
+    <path d="M 23 34 L 41 34 L 44 40 L 20 40 Z" fill="#F9F8F6" stroke="currentColor" strokeWidth="2" strokeLinejoin="miter" />
+    
+    {/* Bed Surface Lines */}
+    <line x1="22" y1="36" x2="42" y2="36" strokeWidth="1.5" />
+    <line x1="21" y1="38" x2="43" y2="38" strokeWidth="1.5" />
+    
+    {/* Base Vents / Indentations */}
+    <line x1="14" y1="42" x2="14" y2="48" strokeWidth="2" strokeLinecap="round" />
+    <line x1="50" y1="42" x2="50" y2="48" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+));
+
+const CustomLinacIcon = memo(({ size = 24, className = "" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    {/* Floor */}
+    <line x1="4" y1="60" x2="60" y2="60" strokeWidth="3" />
+    {/* Base and Pillar */}
+    <path d="M 40 60 V 8 C 40 4 44 2 48 2 C 52 2 56 4 56 8 V 60" />
+    {/* Thick C-Arm Outline (drawn behind to merge nicely) */}
+    <path d="M 48 16 C 48 4 34 4 22 4 H 12 V 30 H 26 V 16 C 32 16 36 20 36 28" fill="#E8EFEA" />
+    {/* Rotating Joint */}
+    <circle cx="48" cy="28" r="12" fill="#E8EFEA" />
+    <circle cx="48" cy="28" r="4" fill="currentColor" />
+    <circle cx="48" cy="28" r="8" strokeDasharray="2 4" opacity="0.5" />
+    {/* Collimator / Head */}
+    <path d="M 12 30 H 26 L 22 42 H 16 Z" fill="#E8EFEA" />
+    <path d="M 16 42 L 17 46 H 21 L 22 42" fill="currentColor" />
+    {/* Radiation Beams */}
+    <path d="M 19 46 L 13 54 M 19 46 L 25 54 M 19 46 V 54" strokeDasharray="2 3" opacity="0.6" strokeWidth="1.5" />
+    {/* Patient Bed */}
+    <rect x="6" y="54" width="34" height="3" rx="1" fill="currentColor" stroke="none" />
+    <rect x="18" y="57" width="10" height="3" />
+  </svg>
+));
+
+const CustomOverseasIcon = memo(({ size = 24, className = "" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <line x1="4" y1="60" x2="60" y2="60" strokeWidth="3" />
+    {/* Bed Pillar */}
+    <rect x="8" y="20" width="10" height="40" rx="2" />
+    {/* Bed Arm & Surface */}
+    <path d="M 18 42 H 28" strokeWidth="3" />
+    <circle cx="28" cy="42" r="4" />
+    <path d="M 28 46 V 50 H 42" strokeWidth="3" />
+    <rect x="18" y="48" width="24" height="2" fill="currentColor" stroke="none" />
+    {/* Robot Base */}
+    <path d="M 42 60 V 46 C 42 38 52 38 52 46 V 60" />
+    {/* Robot Arm Joints */}
+    <circle cx="47" cy="40" r="5" />
+    <path d="M 47 40 L 40 26" strokeWidth="4" />
+    <circle cx="40" cy="26" r="4" />
+    <path d="M 40 26 L 34 22" strokeWidth="4" />
+    {/* Accelerator Head */}
+    <polygon points="26,14 36,20 32,28 22,22" fill="#F9F8F6" stroke="currentColor" strokeLinejoin="miter" />
+    <polygon points="22,22 32,28 30,32 20,26" fill="currentColor" />
+    {/* Side Cabinet */}
+    <rect x="54" y="34" width="8" height="26" rx="2" />
+    <line x1="56" y1="42" x2="60" y2="42" strokeWidth="1.5" />
+    <line x1="56" y1="46" x2="60" y2="46" strokeWidth="1.5" />
+    <line x1="56" y1="50" x2="60" y2="50" strokeWidth="1.5" />
+  </svg>
+));
+
+const CustomPalliativeIcon = memo(({ size = 24, className = "" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    {/* Floor */}
+    <line x1="4" y1="60" x2="60" y2="60" strokeWidth="3" />
+    
+    {/* IV Stand Base & Pole */}
+    <line x1="48" y1="60" x2="56" y2="60" strokeWidth="3" />
+    <circle cx="50" cy="58" r="2" fill="currentColor" stroke="none" />
+    <circle cx="54" cy="58" r="2" fill="currentColor" stroke="none" />
+    <line x1="52" y1="56" x2="52" y2="10" />
+    <line x1="48" y1="10" x2="56" y2="10" />
+    
+    {/* IV Bag & Pump */}
+    <rect x="50" y="14" width="4" height="6" rx="1" />
+    <line x1="52" y1="10" x2="52" y2="14" strokeWidth="1" />
+    <rect x="48" y="30" width="8" height="10" rx="1.5" fill="#F9F8F6" />
+    <line x1="50" y1="33" x2="54" y2="33" strokeWidth="1" />
+    <circle cx="50" cy="37" r="0.5" fill="currentColor" />
+    <circle cx="52" cy="37" r="0.5" fill="currentColor" />
+    <circle cx="54" cy="37" r="0.5" fill="currentColor" />
+    
+    {/* IV Tube */}
+    <path d="M 52 20 C 48 26 48 30 52 30" strokeWidth="1.5" opacity="0.6" />
+    <path d="M 48 36 C 42 44 38 38 34 36" strokeWidth="1.5" opacity="0.6" />
+
+    {/* Recliner Base */}
+    <line x1="22" y1="60" x2="34" y2="60" strokeWidth="3" />
+    <circle cx="24" cy="58" r="2" fill="currentColor" stroke="none" />
+    <circle cx="32" cy="58" r="2" fill="currentColor" stroke="none" />
+    <rect x="24" y="46" width="8" height="10" rx="1" />
+    <line x1="20" y1="46" x2="36" y2="46" strokeWidth="3" />
+    
+    {/* Recliner Seat & Leg Rest */}
+    <path d="M 22 46 L 40 46 L 46 54" strokeWidth="6" strokeLinejoin="round" />
+    {/* Recliner Backrest */}
+    <path d="M 22 46 L 14 26" strokeWidth="6" strokeLinejoin="round" />
+    
+    {/* Armrest */}
+    <path d="M 22 36 L 32 36 V 46" strokeWidth="2.5" />
+    
+    {/* Pillow / Headrest */}
+    <circle cx="12" cy="24" r="3" fill="currentColor" />
   </svg>
 ));
 
@@ -1221,11 +1354,10 @@ const CollaborationStrategyView = memo(({ isPresenting }) => (
             <BentoBox className="flex-1 text-center bg-white border-[#D8D8D8] flex flex-col items-center">
                 <h3 className="font-black text-[15px] text-[#1E2F31] mb-6">Executive Diagnostics</h3>
                 
-                {/* SVG Placeholder */}
+                {/* Custom Diagnostics SVG */}
                 <div className="flex-1 w-full flex items-center justify-center min-h-[140px] mb-8">
-                    <div className="w-32 h-32 rounded-2xl border-2 border-dashed border-[#D8D8D8] bg-[#F9F8F6] flex flex-col items-center justify-center text-[#9B8B70] opacity-70 transition-opacity hover:opacity-100">
-                        <Sparkles size={24} className="mb-2" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest">SVG Here</span>
+                    <div className="w-32 h-32 rounded-2xl border-2 border-[#D8D8D8] bg-[#F9F8F6] flex items-center justify-center text-[#9B8B70] transition-all hover:border-[#9B8B70] hover:shadow-md group">
+                        <CustomDiagnosticsIcon size={64} className="opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300" />
                     </div>
                 </div>
 
@@ -1267,11 +1399,10 @@ const CollaborationStrategyView = memo(({ isPresenting }) => (
             <BentoBox className="flex-1 text-center bg-white border-[#D8D8D8] flex flex-col items-center">
                 <h3 className="font-black text-[15px] text-[#1E2F31] mb-4">Local Systemic & LINAC</h3>
                 
-                {/* SVG Placeholder */}
+                {/* Custom LINAC SVG */}
                 <div className="flex-1 w-full flex items-center justify-center min-h-[100px] mb-6">
-                    <div className="w-24 h-24 rounded-2xl border-2 border-dashed border-[#D8D8D8] bg-[#F9F8F6] flex flex-col items-center justify-center text-[#1C6048] opacity-70 transition-opacity hover:opacity-100">
-                        <Sparkles size={20} className="mb-2" />
-                        <span className="text-[9px] font-bold uppercase tracking-widest">SVG Here</span>
+                    <div className="w-24 h-24 rounded-2xl border-2 border-[#1C6048]/30 bg-[#E8EFEA] flex items-center justify-center text-[#1C6048] transition-all hover:border-[#1C6048] hover:shadow-md group">
+                        <CustomLinacIcon size={48} className="opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300" />
                     </div>
                 </div>
 
@@ -1284,11 +1415,10 @@ const CollaborationStrategyView = memo(({ isPresenting }) => (
             <BentoBox className="flex-1 text-center bg-white border-[#D8D8D8] flex flex-col items-center">
                 <h3 className="font-black text-[15px] text-[#1E2F31] mb-4">Overseas Partner</h3>
                 
-                {/* SVG Placeholder */}
+                {/* Custom Overseas Partner SVG */}
                 <div className="flex-1 w-full flex items-center justify-center min-h-[100px] mb-6">
-                    <div className="w-24 h-24 rounded-2xl border-2 border-dashed border-[#D8D8D8] bg-[#F9F8F6] flex flex-col items-center justify-center text-[#4C4A4B] opacity-70 transition-opacity hover:opacity-100">
-                        <Sparkles size={20} className="mb-2" />
-                        <span className="text-[9px] font-bold uppercase tracking-widest">SVG Here</span>
+                    <div className="w-24 h-24 rounded-2xl border-2 border-[#D8D8D8] bg-[#F9F8F6] flex items-center justify-center text-[#1E2F31] transition-all hover:border-[#1E2F31] hover:shadow-md group">
+                        <CustomOverseasIcon size={48} className="opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300" />
                     </div>
                 </div>
 
@@ -1308,11 +1438,10 @@ const CollaborationStrategyView = memo(({ isPresenting }) => (
             <BentoBox className="flex-1 text-center bg-white border-[#D8D8D8] flex flex-col items-center">
                 <h3 className="font-black text-[15px] text-[#1E2F31] mb-6">Repatriation & Palliative</h3>
                 
-                {/* SVG Placeholder */}
+                {/* Custom Palliative SVG */}
                 <div className="flex-1 w-full flex items-center justify-center min-h-[140px] mb-8">
-                    <div className="w-32 h-32 rounded-2xl border-2 border-dashed border-[#D8D8D8] bg-[#F9F8F6] flex flex-col items-center justify-center text-[#9B8B70] opacity-70 transition-opacity hover:opacity-100">
-                        <Sparkles size={24} className="mb-2" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest">SVG Here</span>
+                    <div className="w-32 h-32 rounded-2xl border-2 border-[#D8D8D8] bg-[#F9F8F6] flex items-center justify-center text-[#9B8B70] transition-all hover:border-[#9B8B70] hover:shadow-md group">
+                        <CustomPalliativeIcon size={64} className="opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300" />
                     </div>
                 </div>
 
@@ -2332,30 +2461,8 @@ const ConsolidatedDashboardView = memo(({ data, assumptions, isPresenting }) => 
           <KPICard title="Blended Cash Multiple" value={`${formatNumber(data.metrics.moic, 2)}x`} icon={<BarChart3 size={18} />} color="blue" subtitle="Consolidated MOIC" />
           <KPICard title="Blended Equity IRR" value={`${formatNumber((data.metrics.irr || 0) * 100, 2)}%`} icon={<Activity size={18} />} color="emerald" subtitle="Compounded Return" />
           <KPICard title="Blended Payback" value={`${formatNumber(data.metrics.payback, 1)} Yrs`} icon={<Clock size={18} />} color="indigo" subtitle="From Year 1" />
-       </div>
-
-       <div className="bg-white p-5 lg:p-6 rounded-2xl shadow-sm border border-[#D8D8D8]">
-          <h3 className="text-lg font-bold text-[#1E2F31] flex items-center gap-2 mb-1"><Layers size={20} className="text-[#1E2F31]" /> Look-Through PnL Summary</h3>
-          <p className="text-[10px] text-[#4C4A4B] font-medium mb-6">Pro-rata accounting view of Vasanta's combined operating margins.</p>
-          
-          <div className="space-y-4">
-            <div className="flex justify-between items-center text-xs">
-               <span className="font-bold text-[#4C4A4B] uppercase tracking-wider">Total Look-Through Revenue</span>
-               <span className="font-black text-[#1E2F31]">{formatCurrency(data.totals.lookThroughRevenue)}</span>
-            </div>
-            <div className="flex justify-between items-center text-xs">
-               <span className="font-bold text-[#4C4A4B] uppercase tracking-wider">Total Look-Through EBITDA</span>
-               <span className="font-black text-[#9B8B70]">{formatCurrency(data.totals.lookThroughEbitda)}</span>
-            </div>
-            <div className="w-full h-px bg-[#D8D8D8]"></div>
-            <div className="flex justify-between items-center text-xs">
-               <span className="font-bold text-[#1C6048] uppercase tracking-wider">Total Look-Through Net Income</span>
-               <span className="font-black text-[#1C6048]">{formatCurrency(data.totals.lookThroughNetIncome)}</span>
-            </div>
-            <div className="flex justify-between items-center text-xs">
-               <span className="font-bold text-[#1E2F31] uppercase tracking-wider">Blended Net Profit Margin</span>
-               <span className="font-black text-[#1E2F31]">{formatNumber(data.totals.lookThroughMargin, 1)}%</span>
-            </div>
+          <div className="col-span-2">
+            <KPICard title="Project Avg Net Margin" value={`${formatNumber(data.totals.lookThroughMargin, 1)}%`} icon={<PieChartIcon size={18} />} color="blue" subtitle="Across 12-Year Lifecycle" />
           </div>
        </div>
 
