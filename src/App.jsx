@@ -1401,12 +1401,12 @@ const CollaborationStrategyView = memo(({ isPresenting }) => (
                 
                 {/* Custom LINAC SVG */}
                 <div className="flex-1 w-full flex items-center justify-center min-h-[100px] mb-6">
-                    <div className="w-24 h-24 rounded-2xl border-2 border-[#1C6048]/30 bg-[#E8EFEA] flex items-center justify-center text-[#1C6048] transition-all hover:border-[#1C6048] hover:shadow-md group">
+                    <div className="w-24 h-24 rounded-2xl border-2 border-[#D8D8D8] bg-[#F9F8F6] flex items-center justify-center text-[#9B8B70] transition-all hover:border-[#9B8B70] hover:shadow-md group">
                         <CustomLinacIcon size={48} className="opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300" />
                     </div>
                 </div>
 
-                <p className="text-[11px] text-[#4C4A4B] leading-relaxed font-medium mt-auto bg-[#E8EFEA] p-4 rounded-xl border border-[#1C6048]/20 w-full">
+                <p className="text-[11px] text-[#4C4A4B] leading-relaxed font-medium mt-auto bg-[#F9F8F6] p-4 rounded-xl border border-[#D8D8D8] w-full">
                     Most vast majority of cases require 30-day radiotherapy cycles or standard chemotherapy. Geographic inelasticity forces these patients to utilize our highly profitable local bunkers and VIP infusion suites.
                 </p>
             </BentoBox>
@@ -1415,14 +1415,16 @@ const CollaborationStrategyView = memo(({ isPresenting }) => (
             <BentoBox className="flex-1 text-center bg-white border-[#D8D8D8] flex flex-col items-center">
                 <h3 className="font-black text-[15px] text-[#1E2F31] mb-4">Overseas Partner</h3>
                 
-                {/* Custom Overseas Partner SVG */}
+                {/* Custom Overseas Partner SVG + DNA */}
                 <div className="flex-1 w-full flex items-center justify-center min-h-[100px] mb-6">
-                    <div className="w-24 h-24 rounded-2xl border-2 border-[#D8D8D8] bg-[#F9F8F6] flex items-center justify-center text-[#1E2F31] transition-all hover:border-[#1E2F31] hover:shadow-md group">
-                        <CustomOverseasIcon size={48} className="opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300" />
+                    <div className="px-5 h-24 rounded-2xl border-2 border-[#D8D8D8] bg-[#E8EFEA] flex items-center justify-center gap-4 transition-all hover:border-[#1C6048] hover:shadow-md group">
+                        <CustomOverseasIcon size={42} className="text-[#1C6048] opacity-80 group-hover:opacity-100 group-hover:-translate-x-1 group-hover:scale-110 transition-all duration-300" />
+                        <div className="w-px h-10 bg-[#D8D8D8] transition-colors group-hover:bg-[#1C6048]/30"></div>
+                        <Dna size={36} strokeWidth={1.5} className="text-[#1C6048] opacity-80 group-hover:opacity-100 group-hover:translate-x-1 group-hover:scale-110 transition-all duration-300" />
                     </div>
                 </div>
 
-                <p className="text-[11px] text-[#4C4A4B] leading-relaxed font-medium mt-auto bg-[#EFEBE7] p-4 rounded-xl border border-[#D8D8D8] w-full">
+                <p className="text-[11px] text-[#1E2F31] leading-relaxed font-medium mt-auto bg-[#E8EFEA] p-4 rounded-xl border border-[#1C6048]/20 w-full">
                     Only ultra-complex surgical cases are referred out, leveraging industrial trust without cannibalizing core local EBITDA.
                 </p>
             </BentoBox>
