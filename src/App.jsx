@@ -110,21 +110,22 @@ const DEFAULT_OPCO_ASSUMPTIONS = {
   ipRevenue: 27, opRevenue: 0.5, priceIncYears1_6: 7, priceIncYears7_plus: 5,
   monthlyStaffCost: 3.8, staffInf: 4, ipMedSupply: 4.5, opMedSupply: 0.2, medSupplyInf: 3,
   adminExpRate: 2, utilExpRate: 5, mktgExpRate: 2, operatorFeeRate: 2.5,
-  insuranceMonthly: 52.3, docFeeIp: 16, docFeeOp: 24, rentTier1Rate: 25, rentTier2Rate: 25, rentTier3Rate: 25, rentTier1Limit: 1.8, rentTier2Limit: 2.2, corporateTax: 22,
+  insuranceMonthly: 52.3, docFeeIp: 16, docFeeOp: 24, rentTier1Rate: 10, rentTier2Rate: 10, rentTier3Rate: 10, rentTier1Limit: 1.8, rentTier2Limit: 2.2, corporateTax: 22,
   partnerAEquity: 41.87, partnerBEquity: 40.23, jvaOpex: 2.5, commOpex: 15, workingCapitalOpex: 64.6,
-  sharingPercentA: 51.00, equitySplitY1: 100, discountRate: 12, holdCoDiscountRate: 11
+  sharingPercentA: 51.00, equitySplitY1: 100, discountRate: 12, holdCoDiscountRate: 11,
+  includeTerminalValue: true, exitMultiple: 30, sellingCosts: 0
 };
 
 const DEFAULT_PROPCO_ASSUMPTIONS = {
   linkToOpCo: true, manualBaseRent: 35, manualRentEscalation: 3, landArea: 12643, landPrice: 15, 
-  buildArea: 13000, buildCost: 10.5, includeMedEq: false, capexMedEqQty: 1, capexMedEqPrice: 140000, 
+  buildArea: 13000, buildCost: 11.5, includeMedEq: false, capexMedEqQty: 1, capexMedEqPrice: 140000, 
   capexInfraQty: 8310, capexInfraPrice: 0.7, includeFFE: true, capexFFEQty: 1, capexFFEPrice: 26000, 
   capexSharingDevQty: 5361, capexSharingDevPrice: 0.8, capexContingencyPct: 2, capexConsultantPct: 2.5,
   capexLicensePct: 1.5, capexCarPct: 0.15, capexVat: 11, devDurationMonths: 24, constructionOpexMonthly: 0.5, 
   opOverheadMonthly: 0.2, opOverheadInc: 4, ffeReservePct: 2, includeFinancing: false, ltv: 65, interestRate: 8.25, loanTenor: 15, ioGracePeriodYears: 3,
   maintRate: 0, propTaxRate: 0, corporateTax: 22, discountRate: 11, depLifeBuilding: 20, depMethodBuilding: 'SL',
   depLifeInfra: 20, depMethodInfra: 'SL', depLifeMedEq: 10, depMethodMedEq: 'SL', depLifeFFE: 20, depMethodFFE: 'SL',
-  includeTerminalValue: true, exitMethod: 'multiple', exitCapRate: 8.5, exitMultiple: 20, sellingCosts: 0,
+  includeTerminalValue: true, exitMethod: 'multiple', exitCapRate: 8.5, exitMultiple: 15, sellingCosts: 0,
 };
 
 const CANCER_DATA = [
@@ -228,27 +229,41 @@ const runOpCoEngine = (assumptions) => {
       const breakEvenRev = (1 - varRate) > 0 ? fixedTotal / (1 - varRate) : 0;
       const breakEvenBor = totalRev > 0 ? (breakEvenRev / totalRev) * bor : 0;
 
+      let opCoExit = 0, pA_Exit = 0, pB_Exit = 0;
+      if (i === 10 && assumptions.includeTerminalValue) {
+          opCoExit = ebitda * (assumptions.exitMultiple || 15);
+          if (assumptions.sellingCosts) {
+              opCoExit = opCoExit * (1 - assumptions.sellingCosts / 100);
+          }
+          pA_Exit = opCoExit * (assumptions.sharingPercentA / 100);
+          pB_Exit = opCoExit * ((100 - assumptions.sharingPercentA) / 100);
+      }
+
       let prevCumNI = cumulativeNetIncome;
       cumulativeNetIncome += netIncome;
       let distributableProfit = Math.max(0, cumulativeNetIncome > 0 ? (prevCumNI < 0 ? cumulativeNetIncome : netIncome) : 0);
       let shareA = distributableProfit * (assumptions.sharingPercentA / 100);
       let shareB = distributableProfit * ((100 - assumptions.sharingPercentA) / 100);
       
-      partnerA_CumCF += shareA; partnerB_CumCF += shareB;
+      partnerA_CumCF += shareA + pA_Exit; 
+      partnerB_CumCF += shareB + pB_Exit;
 
       annualData.push({
         year: `Year ${i + 2}`, isOperating: true, ipRev, opRev, totalRev, totalMedSupp, totalDocFee, 
         grossProfit, staffCost, recurringOpex, ebitdar, rent, ebitda, tax, netIncome, cumNI: cumulativeNetIncome, 
-        distributableProfit, shareA, shareB, pA_Outlay: 0, pA_Div: shareA, pA_Net: shareA, pA_Cum: partnerA_CumCF,
-        pB_Outlay: 0, pB_Div: shareB, pB_Net: shareB, pB_Cum: partnerB_CumCF,
+        distributableProfit, shareA, shareB, opCoExit, pA_Exit, pB_Exit,
+        pA_Outlay: 0, pA_Div: shareA + pA_Exit, pA_Net: shareA + pA_Exit, pA_Cum: partnerA_CumCF,
+        pB_Outlay: 0, pB_Div: shareB + pB_Exit, pB_Net: shareB + pB_Exit, pB_Cum: partnerB_CumCF,
         pA_Yield: assumptions.partnerAEquity > 0 ? (shareA / assumptions.partnerAEquity) * 100 : 0,
         pB_Yield: assumptions.partnerBEquity > 0 ? (shareB / assumptions.partnerBEquity) * 100 : 0,
-        fcf: netIncome + (i === 1 ? assumptions.workingCapitalOpex : 0),
+        fcf: netIncome + (i === 1 ? assumptions.workingCapitalOpex : 0) + opCoExit,
         ebitdaMargin: totalRev > 0 ? (ebitda / totalRev) * 100 : 0, netMargin: totalRev > 0 ? (netIncome / totalRev) * 100 : 0,
         roe: totalEquity > 0 ? (netIncome / totalEquity) * 100 : 0, breakEvenBor: breakEvenBor * 100, bor: bor * 100,
         ipCases, opVisits, fixedCosts: fixedTotal, varCosts: grossProfit - ebitdar
       });
-      partnerACfs.push(shareA); partnerBCfs.push(shareB); projectCfs.push(netIncome + (i === 1 ? assumptions.workingCapitalOpex : 0));
+      partnerACfs.push(shareA + pA_Exit); 
+      partnerBCfs.push(shareB + pB_Exit); 
+      projectCfs.push(netIncome + (i === 1 ? assumptions.workingCapitalOpex : 0) + opCoExit);
     }
 
     const operatingData = annualData.filter(d => d.isOperating);
@@ -273,7 +288,10 @@ const runOpCoEngine = (assumptions) => {
         distributableProfit: annualData.reduce((acc, d) => acc + (d.distributableProfit || 0), 0),
         fcf: annualData.reduce((acc, d) => acc + (d.fcf || 0), 0),
         shareA: annualData.reduce((acc, d) => acc + (d.shareA || 0), 0),
-        shareB: annualData.reduce((acc, d) => acc + (d.shareB || 0), 0)
+        shareB: annualData.reduce((acc, d) => acc + (d.shareB || 0), 0),
+        opCoExit: annualData.reduce((acc, d) => acc + (d.opCoExit || 0), 0),
+        pA_Exit: annualData.reduce((acc, d) => acc + (d.pA_Exit || 0), 0),
+        pB_Exit: annualData.reduce((acc, d) => acc + (d.pB_Exit || 0), 0)
       },
       opsMetrics: { 
         stabilizedVolume: (stabilizedYear?.ipCases || 0) + (stabilizedYear?.opVisits || 0), 
@@ -287,15 +305,15 @@ const runOpCoEngine = (assumptions) => {
       partnerA: { 
         irr: calculateIRR(partnerACfs), 
         payback: calculatePayback(partnerACfs), 
-        totalCash: annualData.reduce((acc, d) => acc + (d.shareA || 0), 0), 
-        moic: assumptions.partnerAEquity > 0 ? annualData.reduce((acc, d) => acc + (d.shareA || 0), 0) / assumptions.partnerAEquity : 0, 
+        totalCash: annualData.reduce((acc, d) => acc + (d.shareA || 0) + (d.pA_Exit || 0), 0), 
+        moic: assumptions.partnerAEquity > 0 ? annualData.reduce((acc, d) => acc + (d.shareA || 0) + (d.pA_Exit || 0), 0) / assumptions.partnerAEquity : 0, 
         avgYield: operatingData.length > 0 ? operatingData.reduce((a, b) => a + (b.pA_Yield || 0), 0) / operatingData.length : 0 
       },
       partnerB: { 
         irr: calculateIRR(partnerBCfs), 
         payback: calculatePayback(partnerBCfs),
-        totalCash: annualData.reduce((acc, d) => acc + (d.shareB || 0), 0),
-        moic: assumptions.partnerBEquity > 0 ? annualData.reduce((acc, d) => acc + (d.shareB || 0), 0) / assumptions.partnerBEquity : 0, 
+        totalCash: annualData.reduce((acc, d) => acc + (d.shareB || 0) + (d.pB_Exit || 0), 0),
+        moic: assumptions.partnerBEquity > 0 ? annualData.reduce((acc, d) => acc + (d.shareB || 0) + (d.pB_Exit || 0), 0) / assumptions.partnerBEquity : 0, 
         avgYield: operatingData.length > 0 ? operatingData.reduce((a, b) => a + (b.pB_Yield || 0), 0) / operatingData.length : 0
       }
     };
@@ -467,11 +485,13 @@ const runConsolidatedEngine = (opCoData, propCoData, opCoAssumptions) => {
     const totalConsolidatedEquity = totalPropCoEq + totalOpCoEq;
 
     propCoData.annualData.forEach((pData, i) => {
-        const oData = opCoData.annualData[i] || { shareB: 0, pB_Outlay: 0, isOperating: pData.isOperating, year: pData.year };
+        const oData = opCoData.annualData[i] || { shareB: 0, pB_Outlay: 0, pB_Exit: 0, isOperating: pData.isOperating, year: pData.year };
         
         // FCFE & pB_Outlay are negative during investment, positive during returns
         const propCoFlow = pData.fcfe || 0;
-        const opCoFlow = (oData.pB_Outlay || 0) + (oData.shareB || 0);
+        const opCoOperatingFlow = (oData.pB_Outlay || 0) + (oData.shareB || 0);
+        const opCoExitFlow = oData.pB_Exit || 0;
+        const opCoFlow = opCoOperatingFlow + opCoExitFlow;
         const netFlow = propCoFlow + opCoFlow;
         
         cumCf += netFlow;
@@ -481,6 +501,8 @@ const runConsolidatedEngine = (opCoData, propCoData, opCoAssumptions) => {
             year: pData.year,
             isOperating: pData.isOperating,
             propCoFlow,
+            opCoOperatingFlow,
+            opCoExitFlow,
             opCoFlow,
             netFlow,
             cumCf
@@ -499,6 +521,8 @@ const runConsolidatedEngine = (opCoData, propCoData, opCoAssumptions) => {
         },
         totals: {
             propCoFlow: annualData.reduce((acc, d) => acc + d.propCoFlow, 0),
+            opCoOperatingFlow: annualData.reduce((acc, d) => acc + d.opCoOperatingFlow, 0),
+            opCoExitFlow: annualData.reduce((acc, d) => acc + d.opCoExitFlow, 0),
             opCoFlow: annualData.reduce((acc, d) => acc + d.opCoFlow, 0),
             netFlow: annualData.reduce((acc, d) => acc + d.netFlow, 0),
         }
@@ -1981,6 +2005,11 @@ const OpCoCascadeView = memo(({ data, assumptions }) => (
                   <TableRow label="NET INCOME" data={data.annualData} dk="netIncome" total={data.totals.netIncome} highlight emerald />
                   <TableRow label="Cumulative Net Income" data={data.annualData} dk="cumNI" highlight crossover bold indigo />
                   <TableRow label="Distributable Profit" data={data.annualData} dk="distributableProfit" total={data.totals.distributableProfit} highlight />
+
+                  <TableSection title="G. Terminal Value (Exit)" colSpan={data.annualData.length + 2} />
+                  <TableRow label="OpCo Enterprise Value" data={data.annualData} dk="opCoExit" total={data.totals.opCoExit} highlight />
+                  <TableRow label="Strategic Ptnr Proceeds (51%)" data={data.annualData} dk="pA_Exit" total={data.totals.pA_Exit} isIndent />
+                  <TableRow label="Vasanta Proceeds (49%)" data={data.annualData} dk="pB_Exit" total={data.totals.pB_Exit} isIndent />
               </tbody>
           </table>
       </div>
@@ -2283,7 +2312,8 @@ const ConsolidatedDashboardView = memo(({ data, assumptions, isPresenting }) => 
                   <Legend iconType="circle" wrapperStyle={LEGEND_STYLE} />
                   
                   <Bar yAxisId="left" stackId="a" dataKey="propCoFlow" name="PropCo FCFE" fill="#9B8B70" radius={[0, 0, 0, 0]} barSize={40} />
-                  <Bar yAxisId="left" stackId="a" dataKey="opCoFlow" name="OpCo Dividend (49%)" fill="#1C6048" radius={[4, 4, 0, 0]} barSize={40} />
+                  <Bar yAxisId="left" stackId="a" dataKey="opCoOperatingFlow" name="OpCo Dividend (49%)" fill="#1C6048" radius={[0, 0, 0, 0]} barSize={40} />
+                  <Bar yAxisId="left" stackId="a" dataKey="opCoExitFlow" name="OpCo Exit (49%)" fill="#99B6AA" radius={[4, 4, 0, 0]} barSize={40} />
                   
                   <Line yAxisId="right" type="monotone" dataKey="cumCf" name="Cumulative Net Position" stroke="#1E2F31" strokeWidth={3} dot={{ r: 4, fill: '#1E2F31', strokeWidth: 2, stroke: '#fff' }} />
                   <ReferenceLine yAxisId="right" y={0} stroke="#D8D8D8" strokeWidth={1} strokeDasharray="5 5" />
@@ -2317,7 +2347,8 @@ const ConsolidatedCascadeView = memo(({ data }) => (
               <tbody>
                   <TableSection title="A. Component Cash Flows" colSpan={data.annualData.length + 2} />
                   <TableRow label="PropCo FCFE (100%)" data={data.annualData} dk="propCoFlow" total={data.totals.propCoFlow} isIndent />
-                  <TableRow label="OpCo Dividend (49%)" data={data.annualData} dk="opCoFlow" total={data.totals.opCoFlow} isIndent />
+                  <TableRow label="OpCo Dividend (49%)" data={data.annualData} dk="opCoOperatingFlow" total={data.totals.opCoOperatingFlow} isIndent />
+                  <TableRow label="OpCo Exit Proceeds (49%)" data={data.annualData} dk="opCoExitFlow" total={data.totals.opCoExitFlow} isIndent />
                   
                   <TableSection title="B. Consolidated Position" colSpan={data.annualData.length + 2} type="emerald" />
                   <TableRow label="NET COMBINED CASH FLOW" data={data.annualData} dk="netFlow" total={data.totals.netFlow} highlight emerald />
@@ -2386,6 +2417,16 @@ const OpCoSettingsView = memo(({ assumptions, onChange, onSyncEquity, onValidate
               <AssumptionRow label="OpCo Disc. Rate" val={assumptions.discountRate} set={(v) => onChange('discountRate', v)} unit="%" isLocked={isLocked} />
               <AssumptionRow label="HoldCo Disc. Rate" val={assumptions.holdCoDiscountRate} set={(v) => onChange('holdCoDiscountRate', v)} unit="%" isLocked={isLocked} />
               <button onClick={onSyncEquity} disabled={isLocked} className="w-full py-2 bg-[#1E2F31] text-white rounded-lg text-[10px] font-bold shadow-md hover:opacity-90 mt-2 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"><Link2 size={12}/> Align Equity</button>
+          </div>
+          <div className="space-y-4">
+              <SectionTitle title="Terminal Value (Exit)" icon={<DollarSign size={16}/>} color="amber" />
+              <ToggleRow label="Include Exit in Yr 10" desc="Calculate OpCo Valuation." checked={assumptions.includeTerminalValue} onChange={(v) => onChange('includeTerminalValue', v)} isLocked={isLocked} />
+              {assumptions.includeTerminalValue && (
+                  <>
+                  <AssumptionRow label="Exit Multiple" val={assumptions.exitMultiple} set={(v) => onChange('exitMultiple', v)} unit="x" isLocked={isLocked} />
+                  <AssumptionRow label="Selling Costs" val={assumptions.sellingCosts} set={(v) => onChange('sellingCosts', v)} unit="%" isLocked={isLocked} />
+                  </>
+              )}
           </div>
       </div>
   </div>
@@ -2636,7 +2677,7 @@ export default function App() {
     finally { setSelectionState(p => ({...p, isLoading: false})); }
   }, [selectionState.query]);
 
-  const handleOpCoChange = useCallback((k, v) => setOpCoAssumptions(p => ({ ...p, [k]: (v === "" ? 0 : parseFloat(v)) || 0 })), []);
+  const handleOpCoChange = useCallback((k, v) => setOpCoAssumptions(p => ({ ...p, [k]: ['includeTerminalValue'].includes(k) ? v : (v === "" ? 0 : parseFloat(v)) || 0 })), []);
   const handlePropCoChange = useCallback((k, v) => setPropCoAssumptions(p => ({ ...p, [k]: ['linkToOpCo', 'includeMedEq', 'includeFFE', 'depMethodBuilding', 'depMethodMedEq', 'depMethodInfra', 'depMethodFFE', 'includeTerminalValue', 'exitMethod', 'includeFinancing'].includes(k) ? v : (v === "" ? 0 : parseFloat(v)) || 0 })), []);
 
   const syncEquityWithSharing = useCallback(() => {
