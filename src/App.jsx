@@ -2651,7 +2651,7 @@ export default function App() {
   const [user, setUser] = useState(null);
 
   const [projectInfo, setProjectInfo] = useState({ 
-    name: "Vasanta Hospital Development", 
+    name: "Vasanta Hospital Project Development", 
     location: "Tangerang, Banten", 
     type: "Specialized Hospital (Class A)", 
     totalLand: "12,643 Sqm", 
