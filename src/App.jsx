@@ -107,13 +107,13 @@ const calculateNPV = (cfs, rate) => !cfs ? 0 : cfs.reduce((acc, val, i) => acc +
 
 const DEFAULT_OPCO_ASSUMPTIONS = {
   beds: 120, alos: 4, opIpRatio: 40, borStart: 45, borMax: 65, borIncrement: 5,
-  ipRevenue: 27, opRevenue: 0.5, priceIncYears1_6: 7, priceIncYears7_plus: 5,
+  ipRevenue: 25, opRevenue: 0.5, priceIncYears1_6: 6, priceIncYears7_plus: 5,
   monthlyStaffCost: 3.8, staffInf: 4, ipMedSupply: 4.5, opMedSupply: 0.2, medSupplyInf: 3,
   adminExpRate: 2, utilExpRate: 5, mktgExpRate: 2, operatorFeeRate: 2.5,
   insuranceMonthly: 52.3, docFeeIp: 16, docFeeOp: 24, rentTier1Rate: 10, rentTier2Rate: 10, rentTier3Rate: 10, rentTier1Limit: 1.8, rentTier2Limit: 2.2, corporateTax: 22,
   partnerAEquity: 41.87, partnerBEquity: 40.23, jvaOpex: 2.5, commOpex: 15, workingCapitalOpex: 64.6,
   sharingPercentA: 51.00, equitySplitY1: 100, discountRate: 12, holdCoDiscountRate: 11,
-  includeTerminalValue: true, exitMultiple: 30, sellingCosts: 0
+  includeTerminalValue: true, exitMultiple: 30, sellingCosts: 0, dividendPayoutRatio: 80
 };
 
 const DEFAULT_PROPCO_ASSUMPTIONS = {
@@ -121,7 +121,7 @@ const DEFAULT_PROPCO_ASSUMPTIONS = {
   buildArea: 13000, buildCost: 11.5, includeMedEq: false, capexMedEqQty: 1, capexMedEqPrice: 140000, 
   capexInfraQty: 8310, capexInfraPrice: 0.7, includeFFE: true, capexFFEQty: 1, capexFFEPrice: 26000, 
   capexSharingDevQty: 5361, capexSharingDevPrice: 0.8, capexContingencyPct: 2, capexConsultantPct: 2.5,
-  capexLicensePct: 1.5, capexCarPct: 0.15, capexVat: 11, devDurationMonths: 24, constructionOpexMonthly: 0.5, 
+  capexLicensePct: 1.5, capexCarPct: 0.15, capexVat: 11, devDurationMonths: 24, equityDrawYear1Pct: 100, constructionOpexMonthly: 0.5, 
   opOverheadMonthly: 0.2, opOverheadInc: 4, ffeReservePct: 2, includeFinancing: false, ltv: 65, interestRate: 8.25, loanTenor: 15, ioGracePeriodYears: 3,
   maintRate: 0, propTaxRate: 0, corporateTax: 22, discountRate: 11, depLifeBuilding: 20, depMethodBuilding: 'SL',
   depLifeInfra: 20, depMethodInfra: 'SL', depLifeMedEq: 10, depMethodMedEq: 'SL', depLifeFFE: 20, depMethodFFE: 'SL',
@@ -168,7 +168,7 @@ const callGemini = async (prompt, systemInstruction) => {
 const runOpCoEngine = (assumptions) => {
     const totalEquity = assumptions.partnerAEquity + assumptions.partnerBEquity;
     let annualData = [], projectCfs = [], partnerACfs = [], partnerBCfs = []; 
-    let cumulativeNetIncome = 0, partnerA_CumCF = 0, partnerB_CumCF = 0;
+    let cumulativeNetIncome = 0, partnerA_CumCF = 0, partnerB_CumCF = 0, cumulativeRetainedEarnings = 0;
 
     const preOp = [{ k: 'jvaOpex', y: 'Year 1', split: assumptions.equitySplitY1 / 100 }, { k: 'commOpex', y: 'Year 2', split: (100 - assumptions.equitySplitY1) / 100 }];
     preOp.forEach(p => {
@@ -181,10 +181,10 @@ const runOpCoEngine = (assumptions) => {
       annualData.push({
         year: p.y, isOperating: false, ipRev: 0, opRev: 0, totalRev: 0, totalMedSupp: 0, totalDocFee: 0, 
         grossProfit: 0, staffCost: 0, recurringOpex: 0, ebitdar: 0, rent: 0, ebitda: net, tax: 0, 
-        netIncome: net, cumNI: cumulativeNetIncome, distributableProfit: 0, shareA: 0, shareB: 0, 
+        netIncome: net, cumNI: cumulativeNetIncome, distributableProfit: 0, retainedThisYear: 0, cumulativeRetainedEarnings: 0, shareA: 0, shareB: 0, 
         pA_Outlay, pA_Div: 0, pA_Net: pA_Outlay, pA_Cum: partnerA_CumCF, pA_Yield: 0,
         pB_Outlay, pB_Div: 0, pB_Net: pB_Outlay, pB_Cum: partnerB_CumCF, pB_Yield: 0,
-        fcf: pA_Outlay + pB_Outlay, ebitdaMargin: 0, netMargin: 0, roe: 0, breakEvenBor: 0, bor: 0
+        fcf: pA_Outlay + pB_Outlay, ebitdaMargin: 0, netMargin: 0, roe: 0, breakEvenBor: 0, bor: 0, ev: 0
       });
       partnerACfs.push(pA_Outlay); partnerBCfs.push(pB_Outlay); projectCfs.push(pA_Outlay + pB_Outlay);
     });
@@ -229,19 +229,25 @@ const runOpCoEngine = (assumptions) => {
       const breakEvenRev = (1 - varRate) > 0 ? fixedTotal / (1 - varRate) : 0;
       const breakEvenBor = totalRev > 0 ? (breakEvenRev / totalRev) * bor : 0;
 
-      let opCoExit = 0, pA_Exit = 0, pB_Exit = 0;
+      let prevCumNI = cumulativeNetIncome;
+      cumulativeNetIncome += netIncome;
+      
+      let availableForDistribution = Math.max(0, cumulativeNetIncome > 0 ? (prevCumNI < 0 ? cumulativeNetIncome : netIncome) : 0);
+      let distributableProfit = availableForDistribution * ((assumptions.dividendPayoutRatio ?? 100) / 100);
+      let retainedThisYear = availableForDistribution - distributableProfit;
+      cumulativeRetainedEarnings += retainedThisYear;
+
+      let opCoExit = 0, pA_Exit = 0, pB_Exit = 0, ev = 0;
       if (i === 10 && assumptions.includeTerminalValue) {
-          opCoExit = ebitda * (assumptions.exitMultiple || 15);
+          ev = ebitda * (assumptions.exitMultiple || 30);
           if (assumptions.sellingCosts) {
-              opCoExit = opCoExit * (1 - assumptions.sellingCosts / 100);
+              ev = ev * (1 - assumptions.sellingCosts / 100);
           }
+          opCoExit = ev + cumulativeRetainedEarnings;
           pA_Exit = opCoExit * (assumptions.sharingPercentA / 100);
           pB_Exit = opCoExit * ((100 - assumptions.sharingPercentA) / 100);
       }
 
-      let prevCumNI = cumulativeNetIncome;
-      cumulativeNetIncome += netIncome;
-      let distributableProfit = Math.max(0, cumulativeNetIncome > 0 ? (prevCumNI < 0 ? cumulativeNetIncome : netIncome) : 0);
       let shareA = distributableProfit * (assumptions.sharingPercentA / 100);
       let shareB = distributableProfit * ((100 - assumptions.sharingPercentA) / 100);
       
@@ -251,7 +257,7 @@ const runOpCoEngine = (assumptions) => {
       annualData.push({
         year: `Year ${i + 2}`, isOperating: true, ipRev, opRev, totalRev, totalMedSupp, totalDocFee, 
         grossProfit, staffCost, recurringOpex, ebitdar, rent, ebitda, tax, netIncome, cumNI: cumulativeNetIncome, 
-        distributableProfit, shareA, shareB, opCoExit, pA_Exit, pB_Exit,
+        distributableProfit, retainedThisYear, cumulativeRetainedEarnings, shareA, shareB, opCoExit, pA_Exit, pB_Exit, ev,
         pA_Outlay: 0, pA_Div: shareA + pA_Exit, pA_Net: shareA + pA_Exit, pA_Cum: partnerA_CumCF,
         pB_Outlay: 0, pB_Div: shareB + pB_Exit, pB_Net: shareB + pB_Exit, pB_Cum: partnerB_CumCF,
         pA_Yield: assumptions.partnerAEquity > 0 ? (shareA / assumptions.partnerAEquity) * 100 : 0,
@@ -289,6 +295,8 @@ const runOpCoEngine = (assumptions) => {
         fcf: annualData.reduce((acc, d) => acc + (d.fcf || 0), 0),
         shareA: annualData.reduce((acc, d) => acc + (d.shareA || 0), 0),
         shareB: annualData.reduce((acc, d) => acc + (d.shareB || 0), 0),
+        retainedThisYear: annualData.reduce((acc, d) => acc + (d.retainedThisYear || 0), 0),
+        ev: annualData.reduce((acc, d) => acc + (d.ev || 0), 0),
         opCoExit: annualData.reduce((acc, d) => acc + (d.opCoExit || 0), 0),
         pA_Exit: annualData.reduce((acc, d) => acc + (d.pA_Exit || 0), 0),
         pB_Exit: annualData.reduce((acc, d) => acc + (d.pB_Exit || 0), 0)
@@ -363,10 +371,29 @@ const runPropCoEngine = (assumptions, opCoModelData) => {
     for(let i=1; i<=devYears; i++) {
         const monthsThisYear = Math.min(12, Math.max(0, (assumptions.devDurationMonths || 24) - ((i - 1) * 12)));
         const overheadOpex = ((assumptions.constructionOpexMonthly || 0) * monthsThisYear) + (carCost / devYears);
-        const eqDraw = -(totalEquity / devYears) - overheadOpex;
-        const eqDrawExLand = -(totalEquityExLand / devYears) - overheadOpex;
+        
+        let eqDrawBase, eqDrawExLandBase, capDrawBase;
+        if (devYears > 1) {
+            const y1Pct = (assumptions.equityDrawYear1Pct ?? 50) / 100;
+            if (i === 1) {
+                eqDrawBase = totalEquity * y1Pct;
+                eqDrawExLandBase = totalEquityExLand * y1Pct;
+                capDrawBase = totalCapex * y1Pct;
+            } else {
+                eqDrawBase = totalEquity * (1 - y1Pct) / (devYears - 1);
+                eqDrawExLandBase = totalEquityExLand * (1 - y1Pct) / (devYears - 1);
+                capDrawBase = totalCapex * (1 - y1Pct) / (devYears - 1);
+            }
+        } else {
+            eqDrawBase = totalEquity;
+            eqDrawExLandBase = totalEquityExLand;
+            capDrawBase = totalCapex;
+        }
+
+        const eqDraw = -eqDrawBase - overheadOpex;
+        const eqDrawExLand = -eqDrawExLandBase - overheadOpex;
         equityCum += eqDraw; equityCumExLand += eqDrawExLand;
-        equityCfs.push(eqDraw); equityCfsExLand.push(eqDrawExLand); unleveredCfs.push(-(totalCapex / devYears) - overheadOpex);
+        equityCfs.push(eqDraw); equityCfsExLand.push(eqDrawExLand); unleveredCfs.push(-capDrawBase - overheadOpex);
         operatingCfs.push(eqDraw);
         annualData.push({ year: `Year ${i}`, isOperating: false, debtBalance: totalDebt, debtBalanceExLand: totalDebtExLand, fcfe: eqDraw, cumFcfe: equityCum, fcfeExLand: eqDrawExLand, cumFcfeExLand: equityCumExLand });
     }
@@ -2001,13 +2028,17 @@ const OpCoCascadeView = memo(({ data, assumptions }) => (
                   <TableRow label="EBITDA" data={data.annualData} dk="ebitda" total={data.totals.ebitda} highlight />
                   <TableRow label="Corporate Tax" data={data.annualData} dk="tax" total={data.totals.tax} isIndent />
                   
-                  <TableSection title="F. Free Cash Flow" colSpan={data.annualData.length + 2} type="emerald" />
+                  <TableSection title="F. Free Cash Flow & Retained Earnings" colSpan={data.annualData.length + 2} type="emerald" />
                   <TableRow label="NET INCOME" data={data.annualData} dk="netIncome" total={data.totals.netIncome} highlight emerald />
                   <TableRow label="Cumulative Net Income" data={data.annualData} dk="cumNI" highlight crossover bold indigo />
-                  <TableRow label="Distributable Profit" data={data.annualData} dk="distributableProfit" total={data.totals.distributableProfit} highlight />
+                  <TableRow label={`Distributable Profit (${assumptions.dividendPayoutRatio ?? 100}%)`} data={data.annualData} dk="distributableProfit" total={data.totals.distributableProfit} highlight />
+                  <TableRow label={`Retained Earnings (${100 - (assumptions.dividendPayoutRatio ?? 100)}%)`} data={data.annualData} dk="retainedThisYear" total={data.totals.retainedThisYear} isIndent />
+                  <TableRow label="Cumulative Retained Cash" data={data.annualData} dk="cumulativeRetainedEarnings" highlight crossover bold indigo />
 
                   <TableSection title="G. Terminal Value (Exit)" colSpan={data.annualData.length + 2} />
-                  <TableRow label="OpCo Enterprise Value" data={data.annualData} dk="opCoExit" total={data.totals.opCoExit} highlight />
+                  <TableRow label="OpCo Enterprise Value (EV)" data={data.annualData} dk="ev" total={data.totals.ev} highlight />
+                  <TableRow label="+ Retained Cash Sweep" data={data.annualData} dk="cumulativeRetainedEarnings" total={data.totals.retainedThisYear} isIndent />
+                  <TableRow label="Total Exit Equity Value" data={data.annualData} dk="opCoExit" total={data.totals.opCoExit} highlight />
                   <TableRow label="Strategic Ptnr Proceeds (51%)" data={data.annualData} dk="pA_Exit" total={data.totals.pA_Exit} isIndent />
                   <TableRow label="Vasanta Proceeds (49%)" data={data.annualData} dk="pB_Exit" total={data.totals.pB_Exit} isIndent />
               </tbody>
@@ -2411,6 +2442,7 @@ const OpCoSettingsView = memo(({ assumptions, onChange, onSyncEquity, onValidate
           </div>
           <div className="space-y-4">
               <SectionTitle title="Capital, Setup & Tax" icon={<Scale size={16}/>} color="blue" />
+              <AssumptionRow label="Dividend Payout Ratio" val={assumptions.dividendPayoutRatio ?? 100} set={(v) => onChange('dividendPayoutRatio', v)} unit="%" isLocked={isLocked} />
               <AssumptionRow label="Strategic Ptnr Eq." val={assumptions.partnerAEquity} set={(v) => onChange('partnerAEquity', v)} unit="B" isLocked={isLocked} />
               <AssumptionRow label="Vasanta Equity" val={assumptions.partnerBEquity} set={(v) => onChange('partnerBEquity', v)} unit="B" isLocked={isLocked} />
               <AssumptionRow label="Strategic Ptnr Share" val={assumptions.sharingPercentA} set={(v) => onChange('sharingPercentA', v)} unit="%" isLocked={isLocked} />
@@ -2463,6 +2495,7 @@ const PropCoSettingsView = memo(({ assumptions, onChange, isLocked, onToggleLock
             <AssumptionRow label="Building Area" val={assumptions.buildArea} set={(v) => onChange('buildArea', v)} unit="Sqm" isLocked={isLocked} />
             <AssumptionRow label="Construction Cost" val={assumptions.buildCost} set={(v) => onChange('buildCost', v)} unit="M/Sqm" isLocked={isLocked} />
             <AssumptionRow label="Dev. Duration" val={assumptions.devDurationMonths} set={(v) => onChange('devDurationMonths', v)} unit="Mos" isLocked={isLocked} />
+            <AssumptionRow label="Year 1 Capex Draw" val={assumptions.equityDrawYear1Pct ?? 100} set={(v) => onChange('equityDrawYear1Pct', Math.min(100, Math.max(0, parseFloat(v) || 0)))} unit="%" isLocked={isLocked || assumptions.devDurationMonths <= 12} />
           </div>
           <div className="space-y-4">
               <SectionTitle title="Other Capex & VAT" icon={<Calculator size={16}/>} color="rose" />
