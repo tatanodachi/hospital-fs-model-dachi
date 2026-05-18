@@ -110,15 +110,15 @@ const DEFAULT_OPCO_ASSUMPTIONS = {
   ipRevenue: 25, opRevenue: 0.5, priceIncYears1_6: 6, priceIncYears7_plus: 5,
   monthlyStaffCost: 3.8, staffInf: 4, ipMedSupply: 4.5, opMedSupply: 0.2, medSupplyInf: 3,
   adminExpRate: 2, utilExpRate: 5, mktgExpRate: 2, operatorFeeRate: 2.5,
-  insuranceMonthly: 52.3, docFeeIp: 16, docFeeOp: 24, rentTier1Rate: 10, rentTier2Rate: 10, rentTier3Rate: 10, rentTier1Limit: 1.8, rentTier2Limit: 2.2, corporateTax: 22,
+  insuranceMonthly: 52.3, docFeeIp: 16, docFeeOp: 24, rentTier1Rate: 15, rentTier2Rate: 15, rentTier3Rate: 15, rentTier1Limit: 1.8, rentTier2Limit: 2.2, corporateTax: 22,
   partnerAEquity: 41.87, partnerBEquity: 40.23, jvaOpex: 2.5, commOpex: 15, workingCapitalOpex: 64.6,
   sharingPercentA: 51.00, equitySplitY1: 100, discountRate: 12, holdCoDiscountRate: 11,
-  includeTerminalValue: true, exitMultiple: 30, sellingCosts: 0, dividendPayoutRatio: 80
+  includeTerminalValue: true, exitMultiple: 15, sellingCosts: 0, dividendPayoutRatio: 80
 };
 
 const DEFAULT_PROPCO_ASSUMPTIONS = {
-  linkToOpCo: true, manualBaseRent: 35, manualRentEscalation: 3, landArea: 12643, landPrice: 15, 
-  buildArea: 13000, buildCost: 11.5, includeMedEq: false, capexMedEqQty: 1, capexMedEqPrice: 140000, 
+  linkToOpCo: true, manualBaseRent: 35, manualRentEscalation: 3, includeLand: false, landArea: 12643, landPrice: 15, 
+  buildArea: 13000, buildCost: 11.5, includeMedEq: true, medEqProcurement: 'lease', medEqLeaseMonthly: 0.375, medEqPurchaseOpYear: 4, medEqPurchaseAmount: 150000, capexMedEqQty: 1, capexMedEqPrice: 150000, 
   capexInfraQty: 8310, capexInfraPrice: 0.7, includeFFE: true, capexFFEQty: 1, capexFFEPrice: 26000, 
   capexSharingDevQty: 5361, capexSharingDevPrice: 0.8, capexContingencyPct: 2, capexConsultantPct: 2.5,
   capexLicensePct: 1.5, capexCarPct: 0.15, capexVat: 11, devDurationMonths: 24, equityDrawYear1Pct: 100, constructionOpexMonthly: 0.5, 
@@ -329,9 +329,9 @@ const runOpCoEngine = (assumptions) => {
 
 const runPropCoEngine = (assumptions, opCoModelData) => {
     let annualData = [], equityCfs = [], equityCfsExLand = [], unleveredCfs = [], operatingCfs = [];
-    const landCost = (assumptions.landArea * assumptions.landPrice) / 1000;
+    const landCost = (assumptions.includeLand ?? true) ? (assumptions.landArea * assumptions.landPrice) / 1000 : 0;
     const buildCost = (assumptions.buildArea * assumptions.buildCost) / 1000;
-    const medEqCost = assumptions.includeMedEq ? (assumptions.capexMedEqQty * assumptions.capexMedEqPrice) / 1000 : 0;
+    const medEqCost = (assumptions.includeMedEq && assumptions.medEqProcurement !== 'lease') ? (assumptions.capexMedEqQty * assumptions.capexMedEqPrice) / 1000 : 0;
     const infraCost = (assumptions.capexInfraQty * assumptions.capexInfraPrice) / 1000;
     const ffeCost = assumptions.includeFFE ? (assumptions.capexFFEQty * assumptions.capexFFEPrice) / 1000 : 0;
     const totalHardCosts = buildCost + medEqCost + infraCost + ffeCost;
@@ -361,7 +361,7 @@ const runPropCoEngine = (assumptions, opCoModelData) => {
     const postIoPmtExLand = Math.abs(calculatePMT(assumptions.interestRate / 100, amortizingTenor, totalDebtExLand));
 
     const buildBasis = buildCost + (totalHardCosts > 0 ? (totalSoftCosts * buildCost / totalHardCosts) : 0);
-    const medEqBasis = medEqCost + (totalHardCosts > 0 ? (totalSoftCosts * medEqCost / totalHardCosts) : 0);
+    let medEqBasis = medEqCost + (totalHardCosts > 0 ? (totalSoftCosts * medEqCost / totalHardCosts) : 0);
     const infraBasis = infraCost + (totalHardCosts > 0 ? (totalSoftCosts * infraCost / totalHardCosts) : 0);
     const ffeBasis = ffeCost + (totalHardCosts > 0 ? (totalSoftCosts * ffeCost / totalHardCosts) : 0);
 
@@ -407,7 +407,21 @@ const runPropCoEngine = (assumptions, opCoModelData) => {
         const maint = buildCost * (assumptions.maintRate / 100), taxOp = totalCapex * (assumptions.propTaxRate / 100);
         const overhead = (assumptions.opOverheadMonthly * 12) * Math.pow(1 + (assumptions.opOverheadInc / 100), i - 1);
         const reserve = revenue * (assumptions.ffeReservePct / 100);
-        const ebitda = revenue - maint - taxOp - overhead - reserve;
+
+        let medEqLeaseOpex = 0;
+        let deferredCapex = 0;
+
+        if (assumptions.includeMedEq && assumptions.medEqProcurement === 'lease') {
+            if (i < (assumptions.medEqPurchaseOpYear || 4)) {
+                medEqLeaseOpex = (assumptions.medEqLeaseMonthly || 0.375) * 12;
+            } else if (i === (assumptions.medEqPurchaseOpYear || 4)) {
+                deferredCapex = (assumptions.medEqPurchaseAmount || 150000) / 1000;
+                bvM += deferredCapex;
+                medEqBasis += deferredCapex;
+            }
+        }
+
+        const ebitda = revenue - maint - taxOp - overhead - reserve - medEqLeaseOpex;
 
         let interest = 0, principal = 0, interestExLand = 0, principalExLand = 0;
         if (outstandingDebt > 0.01) {
@@ -423,7 +437,7 @@ const runPropCoEngine = (assumptions, opCoModelData) => {
 
         const calcDep = (bv, basis, life, currentYear) => Math.min(basis / life, bv);
         const d1 = calcDep(bvB, buildBasis, assumptions.depLifeBuilding || 20, i); bvB -= d1;
-        const d2 = calcDep(bvM, medEqBasis, assumptions.depLifeMedEq || 10, i); bvM -= d2;
+        const d2 = (assumptions.includeMedEq && assumptions.medEqProcurement === 'lease' && i < (assumptions.medEqPurchaseOpYear || 4)) ? 0 : calcDep(bvM, medEqBasis, assumptions.depLifeMedEq || 10, i); bvM -= d2;
         const d3 = calcDep(bvI, infraBasis, assumptions.depLifeInfra || 20, i); bvI -= d3;
         const d4 = calcDep(bvF, ffeBasis, assumptions.depLifeFFE || 20, i); bvF -= d4;
         const dep = d1 + d2 + d3 + d4;
@@ -444,12 +458,12 @@ const runPropCoEngine = (assumptions, opCoModelData) => {
             }
         }
 
-        const unleveredFcff = (ebitda - dep - (ebitda - dep > 0 ? (ebitda - dep) * (assumptions.corporateTax / 100) : 0)) + dep + exitUnlev;
+        const unleveredFcff = (ebitda - dep - (ebitda - dep > 0 ? (ebitda - dep) * (assumptions.corporateTax / 100) : 0)) + dep + exitUnlev - deferredCapex;
         unleveredCfs.push(unleveredFcff);
 
-        const opFcfe = netIncome + dep - principal;
+        const opFcfe = netIncome + dep - principal - deferredCapex;
         const fcfe = opFcfe + exit;
-        const fcfeExLand = (ebitda - interestExLand - dep - (ebitda - interestExLand - dep > 0 ? (ebitda - interestExLand - dep) * (assumptions.corporateTax / 100) : 0)) + dep - principalExLand + exitExLand;
+        const fcfeExLand = (ebitda - interestExLand - dep - (ebitda - interestExLand - dep > 0 ? (ebitda - interestExLand - dep) * (assumptions.corporateTax / 100) : 0)) + dep - principalExLand + exitExLand - deferredCapex;
         
         equityCum += fcfe; equityCumExLand += fcfeExLand;
         equityCfs.push(fcfe); equityCfsExLand.push(fcfeExLand); operatingCfs.push(opFcfe);
@@ -457,7 +471,7 @@ const runPropCoEngine = (assumptions, opCoModelData) => {
         const dscr = (principal + interest) > 0 ? (ebitda / (principal + interest)) : 0;
         avgDscr += dscr; avgYield += (totalEquity > 0 ? (opFcfe / totalEquity) * 100 : 0);
 
-        annualData.push({ year: `Year ${i + devYears}`, isOperating: true, revenue, maintOpex: maint, taxOpex: taxOp, overheadOpex: overhead, ffeReserve: reserve, ebitda, interest, principal, debtBalance: outstandingDebt, dep, corpTax: tax, netIncome, fcfe, cumFcfe: equityCum, dscr, yield: totalEquity > 0 ? (opFcfe / totalEquity) * 100 : 0, fcfeExLand, cumFcfeExLand: equityCumExLand, interestExLand, principalExLand, debtBalanceExLand: outstandingDebtExLand, exit, netExitProceeds: exit, ebt, netExitProceedsExLand: exitExLand, ebtExLand: (ebitda - interestExLand - dep), corpTaxExLand: (ebitda - interestExLand - dep > 0 ? (ebitda - interestExLand - dep) * (assumptions.corporateTax / 100) : 0) });
+        annualData.push({ year: `Year ${i + devYears}`, isOperating: true, revenue, maintOpex: maint, taxOpex: taxOp, overheadOpex: overhead, ffeReserve: reserve, medEqLeaseOpex, ebitda, interest, principal, debtBalance: outstandingDebt, dep, corpTax: tax, netIncome, deferredCapex, fcfe, cumFcfe: equityCum, dscr, yield: totalEquity > 0 ? (opFcfe / totalEquity) * 100 : 0, fcfeExLand, cumFcfeExLand: equityCumExLand, interestExLand, principalExLand, debtBalanceExLand: outstandingDebtExLand, exit, netExitProceeds: exit, ebt, netExitProceedsExLand: exitExLand, ebtExLand: (ebitda - interestExLand - dep), corpTaxExLand: (ebitda - interestExLand - dep > 0 ? (ebitda - interestExLand - dep) * (assumptions.corporateTax / 100) : 0) });
     }
 
     const operatingData = annualData.filter(d => d.isOperating);
@@ -482,6 +496,7 @@ const runPropCoEngine = (assumptions, opCoModelData) => {
         taxOpex: annualData.reduce((acc, d) => acc + (d.taxOpex || 0), 0), 
         overheadOpex: annualData.reduce((acc, d) => acc + (d.overheadOpex || 0), 0), 
         ffeReserve: annualData.reduce((acc, d) => acc + (d.ffeReserve || 0), 0), 
+        medEqLeaseOpex: annualData.reduce((acc, d) => acc + (d.medEqLeaseOpex || 0), 0), 
         ebitda: annualData.reduce((acc, d) => acc + (d.ebitda || 0), 0), 
         interest: annualData.reduce((acc, d) => acc + (d.interest || 0), 0), 
         principal: annualData.reduce((acc, d) => acc + (d.principal || 0), 0), 
@@ -490,6 +505,7 @@ const runPropCoEngine = (assumptions, opCoModelData) => {
         ebt: annualData.reduce((acc, d) => acc + (d.ebt || 0), 0),
         corpTax: annualData.reduce((acc, d) => acc + (d.corpTax || 0), 0),
         netIncome: annualData.reduce((acc, d) => acc + (d.netIncome || 0), 0), 
+        deferredCapex: annualData.reduce((acc, d) => acc + (d.deferredCapex || 0), 0), 
         fcfe: annualData.reduce((acc, d) => acc + (d.fcfe || 0), 0), 
         netExitProceeds: annualData.reduce((acc, d) => acc + (d.netExitProceeds || 0), 0),
         interestExLand: annualData.reduce((acc, d) => acc + (d.interestExLand || 0), 0),
@@ -2260,6 +2276,7 @@ const PropCoCascadeView = memo(({ data, onExport }) => (
                     <TableRow label="Property Taxes" data={data.annualData} dk="taxOpex" total={data.totals.taxOpex} isIndent />
                     <TableRow label="Overhead OpEx" data={data.annualData} dk="overheadOpex" total={data.totals.overheadOpex} isIndent />
                     <TableRow label="FF&E Reserve" data={data.annualData} dk="ffeReserve" total={data.totals.ffeReserve} isIndent />
+                    <TableRow label="MedEq Lease Expense" data={data.annualData} dk="medEqLeaseOpex" total={data.totals.medEqLeaseOpex} isIndent />
                     <TableRow label="EBITDA (NOI)" data={data.annualData} dk="ebitda" total={data.totals.ebitda} highlight />
 
                     <TableSection title="B. Debt Service & Taxes" colSpan={data.annualData.length + 2} />
@@ -2272,6 +2289,7 @@ const PropCoCascadeView = memo(({ data, onExport }) => (
 
                     <TableSection title="C. Return Metrics" colSpan={data.annualData.length + 2} type="emerald" />
                     <TableRow label="NET INCOME" data={data.annualData} dk="netIncome" total={data.totals.netIncome} highlight />
+                    <TableRow label="Deferred MedEq Purchase" data={data.annualData} dk="deferredCapex" total={data.totals.deferredCapex} isIndent />
                     <TableRow label="Net Exit Proceeds" data={data.annualData} dk="netExitProceeds" total={data.totals.netExitProceeds} highlight />
                     <TableRow label="FCFE (Levered)" data={data.annualData} dk="fcfe" highlight emerald total={data.totals.fcfe} />
                     <TableRow label="Cumulative FCFE" data={data.annualData} dk="cumFcfe" highlight crossover bold indigo />
@@ -2466,7 +2484,7 @@ const OpCoSettingsView = memo(({ assumptions, onChange, onSyncEquity, onValidate
 
 const PropCoSettingsView = memo(({ assumptions, onChange, isLocked, onToggleLock, onSave, saveStatus, onReset, onValidate, isCloudSync, isPresenting }) => {
   const buildCostForUi = (assumptions.buildArea * assumptions.buildCost) / 1000;
-  const medEqCostForUi = assumptions.includeMedEq ? (assumptions.capexMedEqQty * assumptions.capexMedEqPrice) / 1000 : 0;
+  const medEqCostForUi = (assumptions.includeMedEq && assumptions.medEqProcurement !== 'lease') ? (assumptions.capexMedEqQty * assumptions.capexMedEqPrice) / 1000 : 0;
   const infraCostForUi = (assumptions.capexInfraQty * assumptions.capexInfraPrice) / 1000;
   const ffeCostForUi = assumptions.includeFFE ? (assumptions.capexFFEQty * assumptions.capexFFEPrice) / 1000 : 0;
   const coreCostForPctUi = buildCostForUi + ffeCostForUi + medEqCostForUi + infraCostForUi;
@@ -2490,8 +2508,11 @@ const PropCoSettingsView = memo(({ assumptions, onChange, isLocked, onToggleLock
           </div>
           <div className="space-y-4">
             <SectionTitle title="Land & Construction" icon={<Map size={16}/>} color="emerald" />
-            <AssumptionRow label="Land Area" val={assumptions.landArea} set={(v) => onChange('landArea', v)} unit="Sqm" isLocked={isLocked} />
-            <AssumptionRow label="Land Price" val={assumptions.landPrice} set={(v) => onChange('landPrice', v)} unit="M/Sqm" isLocked={isLocked} />
+            <ToggleRow label="Include Land Cost" desc="Calculate Land Acquisition." checked={assumptions.includeLand ?? true} onChange={(v) => onChange('includeLand', v)} isLocked={isLocked} />
+            <div className={!(assumptions.includeLand ?? true) ? 'opacity-50 pointer-events-none' : ''}>
+                <AssumptionRow label="Land Area" val={assumptions.landArea} set={(v) => onChange('landArea', v)} unit="Sqm" isLocked={isLocked} />
+                <AssumptionRow label="Land Price" val={assumptions.landPrice} set={(v) => onChange('landPrice', v)} unit="M/Sqm" isLocked={isLocked} />
+            </div>
             <AssumptionRow label="Building Area" val={assumptions.buildArea} set={(v) => onChange('buildArea', v)} unit="Sqm" isLocked={isLocked} />
             <AssumptionRow label="Construction Cost" val={assumptions.buildCost} set={(v) => onChange('buildCost', v)} unit="M/Sqm" isLocked={isLocked} />
             <AssumptionRow label="Dev. Duration" val={assumptions.devDurationMonths} set={(v) => onChange('devDurationMonths', v)} unit="Mos" isLocked={isLocked} />
@@ -2502,6 +2523,26 @@ const PropCoSettingsView = memo(({ assumptions, onChange, isLocked, onToggleLock
               <AssumptionRowCalculated label="Consultant" pctVal={assumptions.capexConsultantPct} setPct={(v) => onChange('capexConsultantPct', v)} calculatedVal={consultantCostUi} isLocked={isLocked} />
               <AssumptionRowCalculated label="License/Permit" pctVal={assumptions.capexLicensePct} setPct={(v) => onChange('capexLicensePct', v)} calculatedVal={licenseCostUi} isLocked={isLocked} />
               <AssumptionRowQtyPriceWithToggle label="Medical Equip." qtyVal={assumptions.capexMedEqQty} priceVal={assumptions.capexMedEqPrice} setQty={(v) => onChange('capexMedEqQty', v)} setPrice={(v) => onChange('capexMedEqPrice', v)} checked={assumptions.includeMedEq} onToggle={(v) => onChange('includeMedEq', v)} isLocked={isLocked} />
+              
+              {assumptions.includeMedEq && (
+                  <div className="pl-3 pr-1 py-2 bg-[#F9F8F6] border-b border-[#D8D8D8] space-y-2 rounded-lg ml-2 border-l-2 border-l-[#1C6048]">
+                      <div className="flex justify-between items-center group">
+                          <label className="text-[10px] text-[#4C4A4B] font-bold">Strategy</label>
+                          <div className="flex items-center bg-[#D8D8D8] rounded p-0.5">
+                              <button disabled={isLocked} onClick={() => onChange('medEqProcurement', 'buy')} className={`px-2 py-0.5 text-[9px] font-bold rounded disabled:opacity-50 disabled:cursor-not-allowed ${assumptions.medEqProcurement !== 'lease' ? 'bg-white text-[#1E2F31] shadow-sm border border-[#D8D8D8]' : 'text-[#4C4A4B]'}`}>Upfront Buy</button>
+                              <button disabled={isLocked} onClick={() => onChange('medEqProcurement', 'lease')} className={`px-2 py-0.5 text-[9px] font-bold rounded disabled:opacity-50 disabled:cursor-not-allowed ${assumptions.medEqProcurement === 'lease' ? 'bg-white text-[#1E2F31] shadow-sm border border-[#D8D8D8]' : 'text-[#4C4A4B]'}`}>Lease-to-Own</button>
+                          </div>
+                      </div>
+                      {assumptions.medEqProcurement === 'lease' && (
+                          <>
+                              <AssumptionRow label="Lease Cost (Mo)" val={assumptions.medEqLeaseMonthly} set={(v) => onChange('medEqLeaseMonthly', v)} unit="B" isLocked={isLocked} />
+                              <AssumptionRow label="Purchase Year (Op)" val={assumptions.medEqPurchaseOpYear} set={(v) => onChange('medEqPurchaseOpYear', v)} unit="Yr" isLocked={isLocked} />
+                              <AssumptionRow label="Purchase Amount" val={assumptions.medEqPurchaseAmount} set={(v) => onChange('medEqPurchaseAmount', v)} unit="M" isLocked={isLocked} />
+                          </>
+                      )}
+                  </div>
+              )}
+
               <AssumptionRowQtyPriceWithToggle label="FF&E" qtyVal={assumptions.capexFFEQty} priceVal={assumptions.capexFFEPrice} setQty={(v) => onChange('capexFFEQty', v)} setPrice={(v) => onChange('capexFFEPrice', v)} checked={assumptions.includeFFE} onToggle={(v) => onChange('includeFFE', v)} isLocked={isLocked} />
               <AssumptionRowQtyPrice label="Infrastructure" qtyVal={assumptions.capexInfraQty} priceVal={assumptions.capexInfraPrice} setQty={(v) => onChange('capexInfraQty', v)} setPrice={(v) => onChange('capexInfraPrice', v)} isLocked={isLocked} />
               <AssumptionRowQtyPrice label="Sharing Dev." qtyVal={assumptions.capexSharingDevQty} priceVal={assumptions.capexSharingDevPrice} setQty={(v) => onChange('capexSharingDevQty', v)} setPrice={(v) => onChange('capexSharingDevPrice', v)} isLocked={isLocked} />
@@ -2711,7 +2752,7 @@ export default function App() {
   }, [selectionState.query]);
 
   const handleOpCoChange = useCallback((k, v) => setOpCoAssumptions(p => ({ ...p, [k]: ['includeTerminalValue'].includes(k) ? v : (v === "" ? 0 : parseFloat(v)) || 0 })), []);
-  const handlePropCoChange = useCallback((k, v) => setPropCoAssumptions(p => ({ ...p, [k]: ['linkToOpCo', 'includeMedEq', 'includeFFE', 'depMethodBuilding', 'depMethodMedEq', 'depMethodInfra', 'depMethodFFE', 'includeTerminalValue', 'exitMethod', 'includeFinancing'].includes(k) ? v : (v === "" ? 0 : parseFloat(v)) || 0 })), []);
+  const handlePropCoChange = useCallback((k, v) => setPropCoAssumptions(p => ({ ...p, [k]: ['linkToOpCo', 'includeLand', 'includeMedEq', 'medEqProcurement', 'includeFFE', 'depMethodBuilding', 'depMethodMedEq', 'depMethodInfra', 'depMethodFFE', 'includeTerminalValue', 'exitMethod', 'includeFinancing'].includes(k) ? v : (v === "" ? 0 : parseFloat(v)) || 0 })), []);
 
   const syncEquityWithSharing = useCallback(() => {
     setOpCoAssumptions(p => {
