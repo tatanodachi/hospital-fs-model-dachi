@@ -540,6 +540,13 @@ const runConsolidatedEngine = (opCoData, propCoData, opCoAssumptions) => {
         cumCf += netFlow;
         consolidatedCfs.push(netFlow);
 
+        // Look-Through PnL Metrics
+        const sharePct = (100 - opCoAssumptions.sharingPercentA) / 100;
+        const lookThroughRevenue = (pData.revenue || 0) + ((oData.totalRev || 0) * sharePct);
+        const lookThroughEbitda = (pData.ebitda || 0) + ((oData.ebitda || 0) * sharePct);
+        const lookThroughNetIncome = (pData.netIncome || 0) + ((oData.netIncome || 0) * sharePct);
+        const lookThroughMargin = lookThroughRevenue > 0 ? (lookThroughNetIncome / lookThroughRevenue) * 100 : 0;
+
         annualData.push({
             year: pData.year,
             isOperating: pData.isOperating,
@@ -548,7 +555,11 @@ const runConsolidatedEngine = (opCoData, propCoData, opCoAssumptions) => {
             opCoExitFlow,
             opCoFlow,
             netFlow,
-            cumCf
+            cumCf,
+            lookThroughRevenue,
+            lookThroughEbitda,
+            lookThroughNetIncome,
+            lookThroughMargin
         });
     });
 
@@ -568,6 +579,9 @@ const runConsolidatedEngine = (opCoData, propCoData, opCoAssumptions) => {
             opCoExitFlow: annualData.reduce((acc, d) => acc + d.opCoExitFlow, 0),
             opCoFlow: annualData.reduce((acc, d) => acc + d.opCoFlow, 0),
             netFlow: annualData.reduce((acc, d) => acc + d.netFlow, 0),
+            lookThroughRevenue: annualData.reduce((acc, d) => acc + (d.lookThroughRevenue || 0), 0),
+            lookThroughEbitda: annualData.reduce((acc, d) => acc + (d.lookThroughEbitda || 0), 0),
+            lookThroughNetIncome: annualData.reduce((acc, d) => acc + (d.lookThroughNetIncome || 0), 0),
         }
     };
 };
@@ -721,7 +735,7 @@ const NavButton = memo(({ active, onClick, icon, label, disabled }) => (
     onClick={disabled ? undefined : onClick} 
     disabled={disabled}
     className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-      disabled ? 'opacity-40 cursor-not-allowed text-[#4C4A4B]' : 
+      disabled ? 'opacity-20 cursor-not-allowed text-[#4C4A4B]' : 
       active ? 'bg-white text-[#1E2F31] shadow-md border border-[#D8D8D8]' : 
       'text-[#4C4A4B] hover:text-[#1E2F31]'
     }`}
@@ -1321,7 +1335,7 @@ const StudyView = memo(({ isPresenting, info }) => {
         <div className="flex bg-white p-1.5 rounded-2xl border border-[#D8D8D8] shadow-sm w-fit overflow-x-auto max-w-full">
           <button 
             disabled
-            className="flex items-center gap-2 px-5 py-2.5 rounded-[14px] text-xs font-bold transition-all whitespace-nowrap text-[#4C4A4B] opacity-40 cursor-not-allowed bg-gray-50"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-[14px] text-xs font-bold transition-all whitespace-nowrap text-[#4C4A4B] opacity-20 cursor-not-allowed bg-gray-50"
             title="Coming Soon"
           >
             <Map size={16}/> Macro Environment
@@ -2321,6 +2335,31 @@ const ConsolidatedDashboardView = memo(({ data, assumptions, isPresenting }) => 
        </div>
 
        <div className="bg-white p-5 lg:p-6 rounded-2xl shadow-sm border border-[#D8D8D8]">
+          <h3 className="text-lg font-bold text-[#1E2F31] flex items-center gap-2 mb-1"><Layers size={20} className="text-[#1E2F31]" /> Look-Through PnL Summary</h3>
+          <p className="text-[10px] text-[#4C4A4B] font-medium mb-6">Pro-rata accounting view of Vasanta's combined operating margins.</p>
+          
+          <div className="space-y-4">
+            <div className="flex justify-between items-center text-xs">
+               <span className="font-bold text-[#4C4A4B] uppercase tracking-wider">Total Look-Through Revenue</span>
+               <span className="font-black text-[#1E2F31]">{formatCurrency(data.totals.lookThroughRevenue)}</span>
+            </div>
+            <div className="flex justify-between items-center text-xs">
+               <span className="font-bold text-[#4C4A4B] uppercase tracking-wider">Total Look-Through EBITDA</span>
+               <span className="font-black text-[#9B8B70]">{formatCurrency(data.totals.lookThroughEbitda)}</span>
+            </div>
+            <div className="w-full h-px bg-[#D8D8D8]"></div>
+            <div className="flex justify-between items-center text-xs">
+               <span className="font-bold text-[#1C6048] uppercase tracking-wider">Total Look-Through Net Income</span>
+               <span className="font-black text-[#1C6048]">{formatCurrency(data.totals.lookThroughNetIncome)}</span>
+            </div>
+            <div className="flex justify-between items-center text-xs">
+               <span className="font-bold text-[#1E2F31] uppercase tracking-wider">Blended Net Profit Margin</span>
+               <span className="font-black text-[#1E2F31]">{formatNumber(data.totals.lookThroughMargin, 1)}%</span>
+            </div>
+          </div>
+       </div>
+
+       <div className="bg-white p-5 lg:p-6 rounded-2xl shadow-sm border border-[#D8D8D8]">
           <h3 className="text-lg font-bold text-[#1E2F31] flex items-center gap-2 mb-1"><Layers size={20} className="text-[#1E2F31]" /> HoldCo Group Position</h3>
           <p className="text-[10px] text-[#4C4A4B] font-medium mb-6">Combined position representing 100% of PropCo cash flows and 49% of OpCo operating dividends.</p>
           
@@ -2348,6 +2387,26 @@ const ConsolidatedDashboardView = memo(({ data, assumptions, isPresenting }) => 
     </div>
     
     <div className={`space-y-6 ${isPresenting ? "lg:col-span-8" : ""}`}>
+       <div className="bg-white p-5 lg:p-6 rounded-2xl shadow-sm border border-[#D8D8D8]">
+          <h3 className="font-bold text-[#1E2F31] mb-6 flex items-center gap-2"><BarChart3 size={18} className="text-[#99B6AA]"/> Managerial Look-Through PnL</h3>
+          <div className={isPresenting ? "h-[300px]" : "h-72"}>
+              <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={data.operatingData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#D8D8D8" />
+                  <XAxis dataKey="year" tick={{fontSize: 10, fill: '#4C4A4B'}} axisLine={false} />
+                  <YAxis yAxisId="left" tick={{fontSize: 10, fill: '#4C4A4B'}} axisLine={false} tickFormatter={(val) => `${val}B`} />
+                  <YAxis yAxisId="right" orientation="right" tick={{fontSize: 10, fill: '#1E2F31'}} axisLine={false} tickFormatter={(val) => `${val}%`} />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(val, name) => formatNumber(val, 1) + (name.includes('Margin') ? '%' : 'B')} />
+                  <Legend iconType="circle" wrapperStyle={LEGEND_STYLE} />
+                  
+                  <Bar yAxisId="left" dataKey="lookThroughRevenue" name="Look-Through Revenue" fill="#EFEBE7" radius={[4, 4, 0, 0]} barSize={40} />
+                  <Bar yAxisId="left" dataKey="lookThroughEbitda" name="Look-Through EBITDA" fill="#9B8B70" radius={[4, 4, 0, 0]} barSize={40} />
+                  <Line yAxisId="right" type="monotone" dataKey="lookThroughMargin" name="Net Profit Margin" stroke="#1C6048" strokeWidth={3} dot={{ r: 4, fill: '#1C6048', strokeWidth: 2, stroke: '#fff' }} />
+              </ComposedChart>
+              </ResponsiveContainer>
+          </div>
+       </div>
+
        <div className="bg-white p-5 lg:p-6 rounded-2xl shadow-sm border border-[#D8D8D8]">
           <h3 className="font-bold text-[#1E2F31] mb-6 flex items-center gap-2"><BarChart3 size={18} className="text-[#1E2F31]"/> Consolidated Cash Flow Trajectory</h3>
           <div className={isPresenting ? "h-[450px]" : "h-80"}>
@@ -2402,6 +2461,12 @@ const ConsolidatedCascadeView = memo(({ data }) => (
                   <TableSection title="B. Consolidated Position" colSpan={data.annualData.length + 2} type="emerald" />
                   <TableRow label="NET COMBINED CASH FLOW" data={data.annualData} dk="netFlow" total={data.totals.netFlow} highlight emerald />
                   <TableRow label="Cumulative Net Position" data={data.annualData} dk="cumCf" highlight crossover bold indigo />
+
+                  <TableSection title="C. Managerial Look-Through PnL" colSpan={data.annualData.length + 2} />
+                  <TableRow label="Look-Through Revenue" data={data.annualData} dk="lookThroughRevenue" total={data.totals.lookThroughRevenue} isIndent />
+                  <TableRow label="Look-Through EBITDA" data={data.annualData} dk="lookThroughEbitda" total={data.totals.lookThroughEbitda} isIndent />
+                  <TableRow label="Look-Through Net Income" data={data.annualData} dk="lookThroughNetIncome" total={data.totals.lookThroughNetIncome} highlight />
+                  <TableRow label="Blended Net Margin (%)" data={data.annualData} dk="lookThroughMargin" total={data.totals.lookThroughMargin} highlight indigo />
               </tbody>
           </table>
       </div>
@@ -2695,6 +2760,11 @@ export default function App() {
     else setActiveTab('dashboard');
   }, []);
 
+  const handleCompanyChange = useCallback((comp) => {
+    setActiveCompany(comp);
+    setActiveTab(prev => (comp === 'consolidated' && (prev === 'assumptions' || prev === 'sensitivity')) ? 'dashboard' : prev);
+  }, []);
+
   // ==========================================
   // STABLE LOCAL-ONLY CLOUD SYNC BYPASS
   // ==========================================
@@ -2904,7 +2974,6 @@ export default function App() {
                  activeCompany === 'opco' ? <Activity className="text-[#1C6048]" /> : 
                  activeCompany === 'propco' ? <Building2 className="text-[#9B8B70]" /> : 
                  <Layers className="text-[#1E2F31]" />} 
-
                 {activeTab === 'overview' ? "Project Context" : 
                  activeTab === 'study' ? "Feasibility Study" :
                  activeTab === 'collab' ? "Collaboration Strategy" :
@@ -2925,15 +2994,16 @@ export default function App() {
               ) : (
                 <>
                   <div className="flex bg-white p-0.5 rounded-md border border-[#D8D8D8] mr-2 shadow-sm animate-in slide-in-from-right duration-300">
-                      <button onClick={() => setActiveCompany('opco')} className={`px-3 py-1 rounded text-[11px] font-black uppercase tracking-wider transition-all ${activeCompany === 'opco' ? 'bg-[#1C6048] text-white' : 'text-[#4C4A4B] hover:text-[#1E2F31]'}`}>OpCo</button>
-                      <button onClick={() => setActiveCompany('propco')} className={`px-3 py-1 rounded text-[11px] font-black uppercase tracking-wider transition-all ${activeCompany === 'propco' ? 'bg-[#9B8B70] text-white' : 'text-[#4C4A4B] hover:text-[#1E2F31]'}`}>PropCo</button>
-                      <button onClick={() => { setActiveCompany('consolidated'); if (activeTab === 'sensitivity' || activeTab === 'assumptions') setActiveTab('dashboard'); }} className={`px-3 py-1 rounded text-[11px] font-black uppercase tracking-wider transition-all ${activeCompany === 'consolidated' ? 'bg-[#1E2F31] text-white' : 'text-[#4C4A4B] hover:text-[#1E2F31]'}`}>HoldCo</button>
+                    <button onClick={() => handleCompanyChange('opco')} className={`px-3 py-1 rounded text-[10px] font-bold transition-colors ${activeCompany === 'opco' ? 'bg-[#1C6048] text-white shadow-inner' : 'text-[#4C4A4B] hover:bg-[#F9F8F6]'}`}>OpCo</button>
+                    <button onClick={() => handleCompanyChange('propco')} className={`px-3 py-1 rounded text-[10px] font-bold transition-colors ${activeCompany === 'propco' ? 'bg-[#9B8B70] text-white shadow-inner' : 'text-[#4C4A4B] hover:bg-[#F9F8F6]'}`}>PropCo</button>
+                    <button onClick={() => handleCompanyChange('consolidated')} className={`px-3 py-1 rounded text-[10px] font-bold transition-colors ${activeCompany === 'consolidated' ? 'bg-[#1E2F31] text-white shadow-inner' : 'text-[#4C4A4B] hover:bg-[#F9F8F6]'}`}>HoldCo</button>
                   </div>
                   <NavButton active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} icon={<LayoutDashboard size={14} />} label="Dashboard" />
-                  <NavButton active={activeTab === 'ai'} onClick={() => setActiveTab('ai')} icon={<AIMicroscopeIcon size={14} />} label="AI Audit" />
-                  <NavButton active={activeTab === 'comprehensive'} onClick={() => setActiveTab('comprehensive')} icon={<List size={14} />} label="Full Cascade" />
-                  <NavButton active={activeTab === 'sensitivity'} onClick={() => setActiveTab('sensitivity')} icon={<Grid size={14} />} label="Sensitivity" disabled={activeCompany === 'consolidated'} />
+                  <NavButton active={activeTab === 'comprehensive'} onClick={() => setActiveTab('comprehensive')} icon={<List size={14} />} label="Cascade" />
+                  <NavButton active={activeTab === 'sensitivity'} onClick={() => setActiveTab('sensitivity')} icon={<TrendingUp size={14} />} label="Sensitivity" disabled={activeCompany === 'consolidated'} />
                   <NavButton active={activeTab === 'assumptions'} onClick={() => setActiveTab('assumptions')} icon={<Settings size={14} />} label="Settings" disabled={activeCompany === 'consolidated'} />
+                  <div className="w-px h-4 bg-[#D8D8D8] mx-1"></div>
+                  <NavButton active={activeTab === 'ai'} onClick={() => setActiveTab('ai')} icon={<AIMicroscopeIcon size={14} />} label="AI Audit" />
                 </>
               )}
             </div>
