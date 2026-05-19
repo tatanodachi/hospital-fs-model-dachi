@@ -12,7 +12,7 @@ import {
   AlertTriangle, Grid, Clock, Lock, Unlock, Info, MapPin, Building,
   Cloud, CloudOff, ChevronDown, GripHorizontal, Maximize, Minimize,
   BookOpen, Target, Search, FolderTree, BarChartHorizontal, Layers, Microscope,
-  Bed, Timer, Network, Plane, Dna, Bone, Baby, Eye, Check
+  Bed, Timer, Network, Plane, Dna, Bone, Baby, Eye, Check, ArrowRight
 } from 'lucide-react';
 
 const CHART_MARGINS_BAR = { top: 20, right: 0, left: 0, bottom: 0 };
@@ -27,6 +27,19 @@ const formatCancerCases = (val) => new Intl.NumberFormat('en-US').format(val);
 const formatInsuranceTooltip = (val) => val.toFixed(2) + "T IDR";
 const formatInsuranceLabel = (val) => val.toFixed(2);
 const LINE_LABEL_STYLE = { position: 'top', fill: '#4C4A4B', fontSize: 10, dy: -10, formatter: formatInsuranceLabel };
+
+const renderPieLabel = ({ cx, cy, midAngle, outerRadius, percent, index, name }) => {
+  const RADIAN = Math.PI / 180;
+  const radius = outerRadius * 1.25;
+  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+  return (
+    <text x={x} y={y} fill={index === 0 ? '#9B8B70' : '#8A9A9C'} textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" fontSize={10} fontWeight="bold">
+      <tspan x={x} dy="-0.4em">{name}</tspan>
+      <tspan x={x} dy="1.2em">{`${(percent * 100).toFixed(0)}%`}</tspan>
+    </text>
+  );
+};
 // ---------------------------------------------------
 
 const formatNumber = (val, decimals = 1) => {
@@ -94,24 +107,25 @@ const calculateNPV = (cfs, rate) => !cfs ? 0 : cfs.reduce((acc, val, i) => acc +
 
 const DEFAULT_OPCO_ASSUMPTIONS = {
   beds: 120, alos: 4, opIpRatio: 40, borStart: 45, borMax: 65, borIncrement: 5,
-  ipRevenue: 27, opRevenue: 0.5, priceIncYears1_6: 7, priceIncYears7_plus: 5,
+  ipRevenue: 25, opRevenue: 0.5, priceIncYears1_6: 6, priceIncYears7_plus: 5,
   monthlyStaffCost: 3.8, staffInf: 4, ipMedSupply: 4.5, opMedSupply: 0.2, medSupplyInf: 3,
   adminExpRate: 2, utilExpRate: 5, mktgExpRate: 2, operatorFeeRate: 2.5,
-  insuranceMonthly: 52.3, docFeeIp: 16, docFeeOp: 24, rentTier1Rate: 25, rentTier2Rate: 25, rentTier3Rate: 25, rentTier1Limit: 1.8, rentTier2Limit: 2.2, corporateTax: 22,
+  insuranceMonthly: 52.3, docFeeIp: 16, docFeeOp: 24, rentTier1Rate: 15, rentTier2Rate: 15, rentTier3Rate: 15, rentTier1Limit: 1.8, rentTier2Limit: 2.2, corporateTax: 22,
   partnerAEquity: 41.87, partnerBEquity: 40.23, jvaOpex: 2.5, commOpex: 15, workingCapitalOpex: 64.6,
-  sharingPercentA: 51.00, equitySplitY1: 100, discountRate: 12, holdCoDiscountRate: 11
+  sharingPercentA: 51.00, equitySplitY1: 100, discountRate: 12, holdCoDiscountRate: 11,
+  includeTerminalValue: true, exitMultiple: 15, sellingCosts: 0, dividendPayoutRatio: 80
 };
 
 const DEFAULT_PROPCO_ASSUMPTIONS = {
-  linkToOpCo: true, manualBaseRent: 35, manualRentEscalation: 3, landArea: 12643, landPrice: 15, 
-  buildArea: 13000, buildCost: 10.5, includeMedEq: false, capexMedEqQty: 1, capexMedEqPrice: 140000, 
+  linkToOpCo: true, manualBaseRent: 35, manualRentEscalation: 3, includeLand: false, landArea: 12643, landPrice: 15, 
+  buildArea: 13000, buildCost: 11.5, includeMedEq: true, medEqProcurement: 'lease', medEqLeaseMonthly: 0.375, medEqPurchaseOpYear: 4, medEqPurchaseAmount: 150000, capexMedEqQty: 1, capexMedEqPrice: 150000, 
   capexInfraQty: 8310, capexInfraPrice: 0.7, includeFFE: true, capexFFEQty: 1, capexFFEPrice: 26000, 
   capexSharingDevQty: 5361, capexSharingDevPrice: 0.8, capexContingencyPct: 2, capexConsultantPct: 2.5,
-  capexLicensePct: 1.5, capexCarPct: 0.15, capexVat: 11, devDurationMonths: 24, constructionOpexMonthly: 0.5, 
+  capexLicensePct: 1.5, capexCarPct: 0.15, capexVat: 11, devDurationMonths: 24, equityDrawYear1Pct: 100, constructionOpexMonthly: 0.5, 
   opOverheadMonthly: 0.2, opOverheadInc: 4, ffeReservePct: 2, includeFinancing: false, ltv: 65, interestRate: 8.25, loanTenor: 15, ioGracePeriodYears: 3,
   maintRate: 0, propTaxRate: 0, corporateTax: 22, discountRate: 11, depLifeBuilding: 20, depMethodBuilding: 'SL',
   depLifeInfra: 20, depMethodInfra: 'SL', depLifeMedEq: 10, depMethodMedEq: 'SL', depLifeFFE: 20, depMethodFFE: 'SL',
-  includeTerminalValue: true, exitMethod: 'multiple', exitCapRate: 8.5, exitMultiple: 20, sellingCosts: 0,
+  includeTerminalValue: true, exitMethod: 'multiple', exitCapRate: 8.5, exitMultiple: 15, sellingCosts: 0,
 };
 
 const CANCER_DATA = [
@@ -154,7 +168,7 @@ const callGemini = async (prompt, systemInstruction) => {
 const runOpCoEngine = (assumptions) => {
     const totalEquity = assumptions.partnerAEquity + assumptions.partnerBEquity;
     let annualData = [], projectCfs = [], partnerACfs = [], partnerBCfs = []; 
-    let cumulativeNetIncome = 0, partnerA_CumCF = 0, partnerB_CumCF = 0;
+    let cumulativeNetIncome = 0, partnerA_CumCF = 0, partnerB_CumCF = 0, cumulativeRetainedEarnings = 0;
 
     const preOp = [{ k: 'jvaOpex', y: 'Year 1', split: assumptions.equitySplitY1 / 100 }, { k: 'commOpex', y: 'Year 2', split: (100 - assumptions.equitySplitY1) / 100 }];
     preOp.forEach(p => {
@@ -167,10 +181,10 @@ const runOpCoEngine = (assumptions) => {
       annualData.push({
         year: p.y, isOperating: false, ipRev: 0, opRev: 0, totalRev: 0, totalMedSupp: 0, totalDocFee: 0, 
         grossProfit: 0, staffCost: 0, recurringOpex: 0, ebitdar: 0, rent: 0, ebitda: net, tax: 0, 
-        netIncome: net, cumNI: cumulativeNetIncome, distributableProfit: 0, shareA: 0, shareB: 0, 
+        netIncome: net, cumNI: cumulativeNetIncome, distributableProfit: 0, retainedThisYear: 0, cumulativeRetainedEarnings: 0, shareA: 0, shareB: 0, 
         pA_Outlay, pA_Div: 0, pA_Net: pA_Outlay, pA_Cum: partnerA_CumCF, pA_Yield: 0,
         pB_Outlay, pB_Div: 0, pB_Net: pB_Outlay, pB_Cum: partnerB_CumCF, pB_Yield: 0,
-        fcf: pA_Outlay + pB_Outlay, ebitdaMargin: 0, netMargin: 0, roe: 0, breakEvenBor: 0, bor: 0
+        fcf: pA_Outlay + pB_Outlay, ebitdaMargin: 0, netMargin: 0, roe: 0, breakEvenBor: 0, bor: 0, ev: 0
       });
       partnerACfs.push(pA_Outlay); partnerBCfs.push(pB_Outlay); projectCfs.push(pA_Outlay + pB_Outlay);
     });
@@ -217,25 +231,45 @@ const runOpCoEngine = (assumptions) => {
 
       let prevCumNI = cumulativeNetIncome;
       cumulativeNetIncome += netIncome;
-      let distributableProfit = Math.max(0, cumulativeNetIncome > 0 ? (prevCumNI < 0 ? cumulativeNetIncome : netIncome) : 0);
+      
+      let availableForDistribution = Math.max(0, cumulativeNetIncome > 0 ? (prevCumNI < 0 ? cumulativeNetIncome : netIncome) : 0);
+      let distributableProfit = availableForDistribution * ((assumptions.dividendPayoutRatio ?? 100) / 100);
+      let retainedThisYear = availableForDistribution - distributableProfit;
+      cumulativeRetainedEarnings += retainedThisYear;
+
+      let opCoExit = 0, pA_Exit = 0, pB_Exit = 0, ev = 0;
+      if (i === 10 && assumptions.includeTerminalValue) {
+          ev = ebitda * (assumptions.exitMultiple || 30);
+          if (assumptions.sellingCosts) {
+              ev = ev * (1 - assumptions.sellingCosts / 100);
+          }
+          opCoExit = ev + cumulativeRetainedEarnings;
+          pA_Exit = opCoExit * (assumptions.sharingPercentA / 100);
+          pB_Exit = opCoExit * ((100 - assumptions.sharingPercentA) / 100);
+      }
+
       let shareA = distributableProfit * (assumptions.sharingPercentA / 100);
       let shareB = distributableProfit * ((100 - assumptions.sharingPercentA) / 100);
       
-      partnerA_CumCF += shareA; partnerB_CumCF += shareB;
+      partnerA_CumCF += shareA + pA_Exit; 
+      partnerB_CumCF += shareB + pB_Exit;
 
       annualData.push({
         year: `Year ${i + 2}`, isOperating: true, ipRev, opRev, totalRev, totalMedSupp, totalDocFee, 
         grossProfit, staffCost, recurringOpex, ebitdar, rent, ebitda, tax, netIncome, cumNI: cumulativeNetIncome, 
-        distributableProfit, shareA, shareB, pA_Outlay: 0, pA_Div: shareA, pA_Net: shareA, pA_Cum: partnerA_CumCF,
-        pB_Outlay: 0, pB_Div: shareB, pB_Net: shareB, pB_Cum: partnerB_CumCF,
+        distributableProfit, retainedThisYear, cumulativeRetainedEarnings, shareA, shareB, opCoExit, pA_Exit, pB_Exit, ev,
+        pA_Outlay: 0, pA_Div: shareA + pA_Exit, pA_Net: shareA + pA_Exit, pA_Cum: partnerA_CumCF,
+        pB_Outlay: 0, pB_Div: shareB + pB_Exit, pB_Net: shareB + pB_Exit, pB_Cum: partnerB_CumCF,
         pA_Yield: assumptions.partnerAEquity > 0 ? (shareA / assumptions.partnerAEquity) * 100 : 0,
         pB_Yield: assumptions.partnerBEquity > 0 ? (shareB / assumptions.partnerBEquity) * 100 : 0,
-        fcf: netIncome + (i === 1 ? assumptions.workingCapitalOpex : 0),
+        fcf: netIncome + (i === 1 ? assumptions.workingCapitalOpex : 0) + opCoExit,
         ebitdaMargin: totalRev > 0 ? (ebitda / totalRev) * 100 : 0, netMargin: totalRev > 0 ? (netIncome / totalRev) * 100 : 0,
         roe: totalEquity > 0 ? (netIncome / totalEquity) * 100 : 0, breakEvenBor: breakEvenBor * 100, bor: bor * 100,
         ipCases, opVisits, fixedCosts: fixedTotal, varCosts: grossProfit - ebitdar
       });
-      partnerACfs.push(shareA); partnerBCfs.push(shareB); projectCfs.push(netIncome + (i === 1 ? assumptions.workingCapitalOpex : 0));
+      partnerACfs.push(shareA + pA_Exit); 
+      partnerBCfs.push(shareB + pB_Exit); 
+      projectCfs.push(netIncome + (i === 1 ? assumptions.workingCapitalOpex : 0) + opCoExit);
     }
 
     const operatingData = annualData.filter(d => d.isOperating);
@@ -260,7 +294,12 @@ const runOpCoEngine = (assumptions) => {
         distributableProfit: annualData.reduce((acc, d) => acc + (d.distributableProfit || 0), 0),
         fcf: annualData.reduce((acc, d) => acc + (d.fcf || 0), 0),
         shareA: annualData.reduce((acc, d) => acc + (d.shareA || 0), 0),
-        shareB: annualData.reduce((acc, d) => acc + (d.shareB || 0), 0)
+        shareB: annualData.reduce((acc, d) => acc + (d.shareB || 0), 0),
+        retainedThisYear: annualData.reduce((acc, d) => acc + (d.retainedThisYear || 0), 0),
+        ev: annualData.reduce((acc, d) => acc + (d.ev || 0), 0),
+        opCoExit: annualData.reduce((acc, d) => acc + (d.opCoExit || 0), 0),
+        pA_Exit: annualData.reduce((acc, d) => acc + (d.pA_Exit || 0), 0),
+        pB_Exit: annualData.reduce((acc, d) => acc + (d.pB_Exit || 0), 0)
       },
       opsMetrics: { 
         stabilizedVolume: (stabilizedYear?.ipCases || 0) + (stabilizedYear?.opVisits || 0), 
@@ -274,15 +313,15 @@ const runOpCoEngine = (assumptions) => {
       partnerA: { 
         irr: calculateIRR(partnerACfs), 
         payback: calculatePayback(partnerACfs), 
-        totalCash: annualData.reduce((acc, d) => acc + (d.shareA || 0), 0), 
-        moic: assumptions.partnerAEquity > 0 ? annualData.reduce((acc, d) => acc + (d.shareA || 0), 0) / assumptions.partnerAEquity : 0, 
+        totalCash: annualData.reduce((acc, d) => acc + (d.shareA || 0) + (d.pA_Exit || 0), 0), 
+        moic: assumptions.partnerAEquity > 0 ? annualData.reduce((acc, d) => acc + (d.shareA || 0) + (d.pA_Exit || 0), 0) / assumptions.partnerAEquity : 0, 
         avgYield: operatingData.length > 0 ? operatingData.reduce((a, b) => a + (b.pA_Yield || 0), 0) / operatingData.length : 0 
       },
       partnerB: { 
         irr: calculateIRR(partnerBCfs), 
         payback: calculatePayback(partnerBCfs),
-        totalCash: annualData.reduce((acc, d) => acc + (d.shareB || 0), 0),
-        moic: assumptions.partnerBEquity > 0 ? annualData.reduce((acc, d) => acc + (d.shareB || 0), 0) / assumptions.partnerBEquity : 0, 
+        totalCash: annualData.reduce((acc, d) => acc + (d.shareB || 0) + (d.pB_Exit || 0), 0),
+        moic: assumptions.partnerBEquity > 0 ? annualData.reduce((acc, d) => acc + (d.shareB || 0) + (d.pB_Exit || 0), 0) / assumptions.partnerBEquity : 0, 
         avgYield: operatingData.length > 0 ? operatingData.reduce((a, b) => a + (b.pB_Yield || 0), 0) / operatingData.length : 0
       }
     };
@@ -290,9 +329,9 @@ const runOpCoEngine = (assumptions) => {
 
 const runPropCoEngine = (assumptions, opCoModelData) => {
     let annualData = [], equityCfs = [], equityCfsExLand = [], unleveredCfs = [], operatingCfs = [];
-    const landCost = (assumptions.landArea * assumptions.landPrice) / 1000;
+    const landCost = (assumptions.includeLand ?? true) ? (assumptions.landArea * assumptions.landPrice) / 1000 : 0;
     const buildCost = (assumptions.buildArea * assumptions.buildCost) / 1000;
-    const medEqCost = assumptions.includeMedEq ? (assumptions.capexMedEqQty * assumptions.capexMedEqPrice) / 1000 : 0;
+    const medEqCost = (assumptions.includeMedEq && assumptions.medEqProcurement !== 'lease') ? (assumptions.capexMedEqQty * assumptions.capexMedEqPrice) / 1000 : 0;
     const infraCost = (assumptions.capexInfraQty * assumptions.capexInfraPrice) / 1000;
     const ffeCost = assumptions.includeFFE ? (assumptions.capexFFEQty * assumptions.capexFFEPrice) / 1000 : 0;
     const totalHardCosts = buildCost + medEqCost + infraCost + ffeCost;
@@ -322,7 +361,7 @@ const runPropCoEngine = (assumptions, opCoModelData) => {
     const postIoPmtExLand = Math.abs(calculatePMT(assumptions.interestRate / 100, amortizingTenor, totalDebtExLand));
 
     const buildBasis = buildCost + (totalHardCosts > 0 ? (totalSoftCosts * buildCost / totalHardCosts) : 0);
-    const medEqBasis = medEqCost + (totalHardCosts > 0 ? (totalSoftCosts * medEqCost / totalHardCosts) : 0);
+    let medEqBasis = medEqCost + (totalHardCosts > 0 ? (totalSoftCosts * medEqCost / totalHardCosts) : 0);
     const infraBasis = infraCost + (totalHardCosts > 0 ? (totalSoftCosts * infraCost / totalHardCosts) : 0);
     const ffeBasis = ffeCost + (totalHardCosts > 0 ? (totalSoftCosts * ffeCost / totalHardCosts) : 0);
 
@@ -332,10 +371,29 @@ const runPropCoEngine = (assumptions, opCoModelData) => {
     for(let i=1; i<=devYears; i++) {
         const monthsThisYear = Math.min(12, Math.max(0, (assumptions.devDurationMonths || 24) - ((i - 1) * 12)));
         const overheadOpex = ((assumptions.constructionOpexMonthly || 0) * monthsThisYear) + (carCost / devYears);
-        const eqDraw = -(totalEquity / devYears) - overheadOpex;
-        const eqDrawExLand = -(totalEquityExLand / devYears) - overheadOpex;
+        
+        let eqDrawBase, eqDrawExLandBase, capDrawBase;
+        if (devYears > 1) {
+            const y1Pct = (assumptions.equityDrawYear1Pct ?? 50) / 100;
+            if (i === 1) {
+                eqDrawBase = totalEquity * y1Pct;
+                eqDrawExLandBase = totalEquityExLand * y1Pct;
+                capDrawBase = totalCapex * y1Pct;
+            } else {
+                eqDrawBase = totalEquity * (1 - y1Pct) / (devYears - 1);
+                eqDrawExLandBase = totalEquityExLand * (1 - y1Pct) / (devYears - 1);
+                capDrawBase = totalCapex * (1 - y1Pct) / (devYears - 1);
+            }
+        } else {
+            eqDrawBase = totalEquity;
+            eqDrawExLandBase = totalEquityExLand;
+            capDrawBase = totalCapex;
+        }
+
+        const eqDraw = -eqDrawBase - overheadOpex;
+        const eqDrawExLand = -eqDrawExLandBase - overheadOpex;
         equityCum += eqDraw; equityCumExLand += eqDrawExLand;
-        equityCfs.push(eqDraw); equityCfsExLand.push(eqDrawExLand); unleveredCfs.push(-(totalCapex / devYears) - overheadOpex);
+        equityCfs.push(eqDraw); equityCfsExLand.push(eqDrawExLand); unleveredCfs.push(-capDrawBase - overheadOpex);
         operatingCfs.push(eqDraw);
         annualData.push({ year: `Year ${i}`, isOperating: false, debtBalance: totalDebt, debtBalanceExLand: totalDebtExLand, fcfe: eqDraw, cumFcfe: equityCum, fcfeExLand: eqDrawExLand, cumFcfeExLand: equityCumExLand });
     }
@@ -349,7 +407,21 @@ const runPropCoEngine = (assumptions, opCoModelData) => {
         const maint = buildCost * (assumptions.maintRate / 100), taxOp = totalCapex * (assumptions.propTaxRate / 100);
         const overhead = (assumptions.opOverheadMonthly * 12) * Math.pow(1 + (assumptions.opOverheadInc / 100), i - 1);
         const reserve = revenue * (assumptions.ffeReservePct / 100);
-        const ebitda = revenue - maint - taxOp - overhead - reserve;
+
+        let medEqLeaseOpex = 0;
+        let deferredCapex = 0;
+
+        if (assumptions.includeMedEq && assumptions.medEqProcurement === 'lease') {
+            if (i < (assumptions.medEqPurchaseOpYear || 4)) {
+                medEqLeaseOpex = (assumptions.medEqLeaseMonthly || 0.375) * 12;
+            } else if (i === (assumptions.medEqPurchaseOpYear || 4)) {
+                deferredCapex = (assumptions.medEqPurchaseAmount || 150000) / 1000;
+                bvM += deferredCapex;
+                medEqBasis += deferredCapex;
+            }
+        }
+
+        const ebitda = revenue - maint - taxOp - overhead - reserve - medEqLeaseOpex;
 
         let interest = 0, principal = 0, interestExLand = 0, principalExLand = 0;
         if (outstandingDebt > 0.01) {
@@ -365,7 +437,7 @@ const runPropCoEngine = (assumptions, opCoModelData) => {
 
         const calcDep = (bv, basis, life, currentYear) => Math.min(basis / life, bv);
         const d1 = calcDep(bvB, buildBasis, assumptions.depLifeBuilding || 20, i); bvB -= d1;
-        const d2 = calcDep(bvM, medEqBasis, assumptions.depLifeMedEq || 10, i); bvM -= d2;
+        const d2 = (assumptions.includeMedEq && assumptions.medEqProcurement === 'lease' && i < (assumptions.medEqPurchaseOpYear || 4)) ? 0 : calcDep(bvM, medEqBasis, assumptions.depLifeMedEq || 10, i); bvM -= d2;
         const d3 = calcDep(bvI, infraBasis, assumptions.depLifeInfra || 20, i); bvI -= d3;
         const d4 = calcDep(bvF, ffeBasis, assumptions.depLifeFFE || 20, i); bvF -= d4;
         const dep = d1 + d2 + d3 + d4;
@@ -386,12 +458,12 @@ const runPropCoEngine = (assumptions, opCoModelData) => {
             }
         }
 
-        const unleveredFcff = (ebitda - dep - (ebitda - dep > 0 ? (ebitda - dep) * (assumptions.corporateTax / 100) : 0)) + dep + exitUnlev;
+        const unleveredFcff = (ebitda - dep - (ebitda - dep > 0 ? (ebitda - dep) * (assumptions.corporateTax / 100) : 0)) + dep + exitUnlev - deferredCapex;
         unleveredCfs.push(unleveredFcff);
 
-        const opFcfe = netIncome + dep - principal;
+        const opFcfe = netIncome + dep - principal - deferredCapex;
         const fcfe = opFcfe + exit;
-        const fcfeExLand = (ebitda - interestExLand - dep - (ebitda - interestExLand - dep > 0 ? (ebitda - interestExLand - dep) * (assumptions.corporateTax / 100) : 0)) + dep - principalExLand + exitExLand;
+        const fcfeExLand = (ebitda - interestExLand - dep - (ebitda - interestExLand - dep > 0 ? (ebitda - interestExLand - dep) * (assumptions.corporateTax / 100) : 0)) + dep - principalExLand + exitExLand - deferredCapex;
         
         equityCum += fcfe; equityCumExLand += fcfeExLand;
         equityCfs.push(fcfe); equityCfsExLand.push(fcfeExLand); operatingCfs.push(opFcfe);
@@ -399,7 +471,7 @@ const runPropCoEngine = (assumptions, opCoModelData) => {
         const dscr = (principal + interest) > 0 ? (ebitda / (principal + interest)) : 0;
         avgDscr += dscr; avgYield += (totalEquity > 0 ? (opFcfe / totalEquity) * 100 : 0);
 
-        annualData.push({ year: `Year ${i + devYears}`, isOperating: true, revenue, maintOpex: maint, taxOpex: taxOp, overheadOpex: overhead, ffeReserve: reserve, ebitda, interest, principal, debtBalance: outstandingDebt, dep, corpTax: tax, netIncome, fcfe, cumFcfe: equityCum, dscr, yield: totalEquity > 0 ? (opFcfe / totalEquity) * 100 : 0, fcfeExLand, cumFcfeExLand: equityCumExLand, interestExLand, principalExLand, debtBalanceExLand: outstandingDebtExLand, exit, netExitProceeds: exit, ebt, netExitProceedsExLand: exitExLand, ebtExLand: (ebitda - interestExLand - dep), corpTaxExLand: (ebitda - interestExLand - dep > 0 ? (ebitda - interestExLand - dep) * (assumptions.corporateTax / 100) : 0) });
+        annualData.push({ year: `Year ${i + devYears}`, isOperating: true, revenue, maintOpex: maint, taxOpex: taxOp, overheadOpex: overhead, ffeReserve: reserve, medEqLeaseOpex, ebitda, interest, principal, debtBalance: outstandingDebt, dep, corpTax: tax, netIncome, deferredCapex, fcfe, cumFcfe: equityCum, dscr, yield: totalEquity > 0 ? (opFcfe / totalEquity) * 100 : 0, fcfeExLand, cumFcfeExLand: equityCumExLand, interestExLand, principalExLand, debtBalanceExLand: outstandingDebtExLand, exit, netExitProceeds: exit, ebt, netExitProceedsExLand: exitExLand, ebtExLand: (ebitda - interestExLand - dep), corpTaxExLand: (ebitda - interestExLand - dep > 0 ? (ebitda - interestExLand - dep) * (assumptions.corporateTax / 100) : 0) });
     }
 
     const operatingData = annualData.filter(d => d.isOperating);
@@ -424,6 +496,7 @@ const runPropCoEngine = (assumptions, opCoModelData) => {
         taxOpex: annualData.reduce((acc, d) => acc + (d.taxOpex || 0), 0), 
         overheadOpex: annualData.reduce((acc, d) => acc + (d.overheadOpex || 0), 0), 
         ffeReserve: annualData.reduce((acc, d) => acc + (d.ffeReserve || 0), 0), 
+        medEqLeaseOpex: annualData.reduce((acc, d) => acc + (d.medEqLeaseOpex || 0), 0), 
         ebitda: annualData.reduce((acc, d) => acc + (d.ebitda || 0), 0), 
         interest: annualData.reduce((acc, d) => acc + (d.interest || 0), 0), 
         principal: annualData.reduce((acc, d) => acc + (d.principal || 0), 0), 
@@ -432,6 +505,7 @@ const runPropCoEngine = (assumptions, opCoModelData) => {
         ebt: annualData.reduce((acc, d) => acc + (d.ebt || 0), 0),
         corpTax: annualData.reduce((acc, d) => acc + (d.corpTax || 0), 0),
         netIncome: annualData.reduce((acc, d) => acc + (d.netIncome || 0), 0), 
+        deferredCapex: annualData.reduce((acc, d) => acc + (d.deferredCapex || 0), 0), 
         fcfe: annualData.reduce((acc, d) => acc + (d.fcfe || 0), 0), 
         netExitProceeds: annualData.reduce((acc, d) => acc + (d.netExitProceeds || 0), 0),
         interestExLand: annualData.reduce((acc, d) => acc + (d.interestExLand || 0), 0),
@@ -454,25 +528,52 @@ const runConsolidatedEngine = (opCoData, propCoData, opCoAssumptions) => {
     const totalConsolidatedEquity = totalPropCoEq + totalOpCoEq;
 
     propCoData.annualData.forEach((pData, i) => {
-        const oData = opCoData.annualData[i] || { shareB: 0, pB_Outlay: 0, isOperating: pData.isOperating, year: pData.year };
+        const oData = opCoData.annualData[i] || { shareB: 0, pB_Outlay: 0, pB_Exit: 0, isOperating: pData.isOperating, year: pData.year };
         
         // FCFE & pB_Outlay are negative during investment, positive during returns
         const propCoFlow = pData.fcfe || 0;
-        const opCoFlow = (oData.pB_Outlay || 0) + (oData.shareB || 0);
+        const opCoOperatingFlow = (oData.pB_Outlay || 0) + (oData.shareB || 0);
+        const opCoExitFlow = oData.pB_Exit || 0;
+        const opCoFlow = opCoOperatingFlow + opCoExitFlow;
         const netFlow = propCoFlow + opCoFlow;
         
         cumCf += netFlow;
         consolidatedCfs.push(netFlow);
 
+        // Look-Through PnL Metrics
+        const sharePct = (100 - opCoAssumptions.sharingPercentA) / 100;
+        const lookThroughRevenue = (pData.revenue || 0) + ((oData.totalRev || 0) * sharePct);
+        const lookThroughEbitda = (pData.ebitda || 0) + ((oData.ebitda || 0) * sharePct);
+        const lookThroughNetIncome = (pData.netIncome || 0) + ((oData.netIncome || 0) * sharePct);
+        const lookThroughMargin = lookThroughRevenue > 0 ? (lookThroughNetIncome / lookThroughRevenue) * 100 : 0;
+
         annualData.push({
             year: pData.year,
             isOperating: pData.isOperating,
             propCoFlow,
+            opCoOperatingFlow,
+            opCoExitFlow,
             opCoFlow,
             netFlow,
-            cumCf
+            cumCf,
+            lookThroughRevenue,
+            lookThroughEbitda,
+            lookThroughNetIncome,
+            lookThroughMargin
         });
     });
+
+    const totals = {
+        propCoFlow: annualData.reduce((acc, d) => acc + d.propCoFlow, 0),
+        opCoOperatingFlow: annualData.reduce((acc, d) => acc + d.opCoOperatingFlow, 0),
+        opCoExitFlow: annualData.reduce((acc, d) => acc + d.opCoExitFlow, 0),
+        opCoFlow: annualData.reduce((acc, d) => acc + d.opCoFlow, 0),
+        netFlow: annualData.reduce((acc, d) => acc + d.netFlow, 0),
+        lookThroughRevenue: annualData.reduce((acc, d) => acc + (d.lookThroughRevenue || 0), 0),
+        lookThroughEbitda: annualData.reduce((acc, d) => acc + (d.lookThroughEbitda || 0), 0),
+        lookThroughNetIncome: annualData.reduce((acc, d) => acc + (d.lookThroughNetIncome || 0), 0),
+    };
+    totals.lookThroughMargin = totals.lookThroughRevenue > 0 ? (totals.lookThroughNetIncome / totals.lookThroughRevenue) * 100 : 0;
 
     return {
         annualData,
@@ -484,11 +585,7 @@ const runConsolidatedEngine = (opCoData, propCoData, opCoAssumptions) => {
             payback: calculatePayback(consolidatedCfs),
             moic: totalConsolidatedEquity > 0 ? consolidatedCfs.reduce((acc, val) => val > 0 ? acc + val : acc, 0) / totalConsolidatedEquity : 0
         },
-        totals: {
-            propCoFlow: annualData.reduce((acc, d) => acc + d.propCoFlow, 0),
-            opCoFlow: annualData.reduce((acc, d) => acc + d.opCoFlow, 0),
-            netFlow: annualData.reduce((acc, d) => acc + d.netFlow, 0),
-        }
+        totals
     };
 };
 
@@ -621,6 +718,163 @@ const CustomPopulationIcon = memo(({ size = 24, className = "" }) => (
   </svg>
 ));
 
+const CustomDiagnosticsIcon = memo(({ size = 24, className = "" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    {/* Floor Base */}
+    <line x1="4" y1="60" x2="60" y2="60" strokeWidth="3" />
+    <rect x="18" y="56" width="28" height="4" fill="currentColor" stroke="none" />
+    
+    {/* Outer Scanner Body (Tall Pill Shape) */}
+    <rect x="10" y="4" width="44" height="52" rx="20" strokeWidth="2.5" />
+    
+    {/* High-Tech Ticked Ring Array */}
+    <circle cx="32" cy="26" r="16" strokeDasharray="1.5 2.5" strokeWidth="2" opacity="0.6" />
+    <circle cx="32" cy="26" r="13" />
+    
+    {/* Targeting Crosshair */}
+    <line x1="12" y1="26" x2="52" y2="26" strokeDasharray="2 3" opacity="0.4" />
+    <line x1="32" y1="6" x2="32" y2="46" strokeDasharray="2 3" opacity="0.4" />
+    <circle cx="32" cy="26" r="3" />
+    
+    {/* Bed Pedestal (Solid silhouette) */}
+    <path d="M 27.5 40 L 36.5 40 L 40 60 L 24 60 Z" fill="currentColor" stroke="none" opacity="0.9" />
+    
+    {/* Sliding Patient Bed (Perspective) */}
+    <path d="M 23 34 L 41 34 L 44 40 L 20 40 Z" fill="#F9F8F6" stroke="currentColor" strokeWidth="2" strokeLinejoin="miter" />
+    
+    {/* Bed Surface Lines */}
+    <line x1="22" y1="36" x2="42" y2="36" strokeWidth="1.5" />
+    <line x1="21" y1="38" x2="43" y2="38" strokeWidth="1.5" />
+    
+    {/* Base Vents / Indentations */}
+    <line x1="14" y1="42" x2="14" y2="48" strokeWidth="2" strokeLinecap="round" />
+    <line x1="50" y1="42" x2="50" y2="48" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+));
+
+const CustomLinacIcon = memo(({ size = 24, className = "" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    {/* Floor */}
+    <line x1="4" y1="60" x2="60" y2="60" strokeWidth="3" />
+    {/* Base and Pillar */}
+    <path d="M 40 60 V 8 C 40 4 44 2 48 2 C 52 2 56 4 56 8 V 60" />
+    {/* Thick C-Arm Outline (drawn behind to merge nicely) */}
+    <path d="M 48 16 C 48 4 34 4 22 4 H 12 V 30 H 26 V 16 C 32 16 36 20 36 28" fill="#E8EFEA" />
+    {/* Rotating Joint */}
+    <circle cx="48" cy="28" r="12" fill="#E8EFEA" />
+    <circle cx="48" cy="28" r="4" fill="currentColor" />
+    <circle cx="48" cy="28" r="8" strokeDasharray="2 4" opacity="0.5" />
+    {/* Collimator / Head */}
+    <path d="M 12 30 H 26 L 22 42 H 16 Z" fill="#E8EFEA" />
+    <path d="M 16 42 L 17 46 H 21 L 22 42" fill="currentColor" />
+    {/* Radiation Beams */}
+    <path d="M 19 46 L 13 54 M 19 46 L 25 54 M 19 46 V 54" strokeDasharray="2 3" opacity="0.6" strokeWidth="1.5" />
+    {/* Patient Bed */}
+    <rect x="6" y="54" width="34" height="3" rx="1" fill="currentColor" stroke="none" />
+    <rect x="18" y="57" width="10" height="3" />
+  </svg>
+));
+
+const CustomOverseasIcon = memo(({ size = 24, className = "" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <line x1="4" y1="60" x2="60" y2="60" strokeWidth="3" />
+    {/* Bed Pillar */}
+    <rect x="8" y="20" width="10" height="40" rx="2" />
+    {/* Bed Arm & Surface */}
+    <path d="M 18 42 H 28" strokeWidth="3" />
+    <circle cx="28" cy="42" r="4" />
+    <path d="M 28 46 V 50 H 42" strokeWidth="3" />
+    <rect x="18" y="48" width="24" height="2" fill="currentColor" stroke="none" />
+    {/* Robot Base */}
+    <path d="M 42 60 V 46 C 42 38 52 38 52 46 V 60" />
+    {/* Robot Arm Joints */}
+    <circle cx="47" cy="40" r="5" />
+    <path d="M 47 40 L 40 26" strokeWidth="4" />
+    <circle cx="40" cy="26" r="4" />
+    <path d="M 40 26 L 34 22" strokeWidth="4" />
+    {/* Accelerator Head */}
+    <polygon points="26,14 36,20 32,28 22,22" fill="#F9F8F6" stroke="currentColor" strokeLinejoin="miter" />
+    <polygon points="22,22 32,28 30,32 20,26" fill="currentColor" />
+    {/* Side Cabinet */}
+    <rect x="54" y="34" width="8" height="26" rx="2" />
+    <line x1="56" y1="42" x2="60" y2="42" strokeWidth="1.5" />
+    <line x1="56" y1="46" x2="60" y2="46" strokeWidth="1.5" />
+    <line x1="56" y1="50" x2="60" y2="50" strokeWidth="1.5" />
+  </svg>
+));
+
+const CustomPalliativeIcon = memo(({ size = 24, className = "" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    {/* Floor */}
+    <line x1="4" y1="60" x2="60" y2="60" strokeWidth="3" />
+    
+    {/* IV Stand Base & Pole */}
+    <line x1="48" y1="60" x2="56" y2="60" strokeWidth="3" />
+    <circle cx="50" cy="58" r="2" fill="currentColor" stroke="none" />
+    <circle cx="54" cy="58" r="2" fill="currentColor" stroke="none" />
+    <line x1="52" y1="56" x2="52" y2="10" />
+    <line x1="48" y1="10" x2="56" y2="10" />
+    
+    {/* IV Bag & Pump */}
+    <rect x="50" y="14" width="4" height="6" rx="1" />
+    <line x1="52" y1="10" x2="52" y2="14" strokeWidth="1" />
+    <rect x="48" y="30" width="8" height="10" rx="1.5" fill="#F9F8F6" />
+    <line x1="50" y1="33" x2="54" y2="33" strokeWidth="1" />
+    <circle cx="50" cy="37" r="0.5" fill="currentColor" />
+    <circle cx="52" cy="37" r="0.5" fill="currentColor" />
+    <circle cx="54" cy="37" r="0.5" fill="currentColor" />
+    
+    {/* IV Tube */}
+    <path d="M 52 20 C 48 26 48 30 52 30" strokeWidth="1.5" opacity="0.6" />
+    <path d="M 48 36 C 42 44 38 38 34 36" strokeWidth="1.5" opacity="0.6" />
+
+    {/* Recliner Base */}
+    <line x1="22" y1="60" x2="34" y2="60" strokeWidth="3" />
+    <circle cx="24" cy="58" r="2" fill="currentColor" stroke="none" />
+    <circle cx="32" cy="58" r="2" fill="currentColor" stroke="none" />
+    <rect x="24" y="46" width="8" height="10" rx="1" />
+    <line x1="20" y1="46" x2="36" y2="46" strokeWidth="3" />
+    
+    {/* Recliner Seat & Leg Rest */}
+    <path d="M 22 46 L 40 46 L 46 54" strokeWidth="6" strokeLinejoin="round" />
+    {/* Recliner Backrest */}
+    <path d="M 22 46 L 14 26" strokeWidth="6" strokeLinejoin="round" />
+    
+    {/* Armrest */}
+    <path d="M 22 36 L 32 36 V 46" strokeWidth="2.5" />
+    
+    {/* Pillow / Headrest */}
+    <circle cx="12" cy="24" r="3" fill="currentColor" />
+  </svg>
+));
+
+const CustomClipboardIcon = memo(({ size = 24, className = "" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    {/* Background shadow/depth */}
+    <rect x="18" y="16" width="32" height="42" rx="3" fill="#EFEBE7" stroke="none" />
+    
+    {/* Main Board */}
+    <rect x="14" y="12" width="32" height="42" rx="3" fill="#F9F8F6" />
+    
+    {/* Top Clip Mechanism */}
+    <path d="M 22 12 V 8 C 22 6.5 23.5 5 25 5 H 35 C 36.5 5 38 6.5 38 8 V 12" />
+    <rect x="24" y="9" width="12" height="6" rx="1.5" fill="currentColor" stroke="none" />
+    
+    {/* Medical Cross */}
+    <path d="M 28 22 H 32 M 30 20 V 24" strokeWidth="2.5" />
+    
+    {/* Checklist lines and boxes */}
+    <rect x="20" y="30" width="4" height="4" rx="1" />
+    <line x1="28" y1="32" x2="40" y2="32" strokeWidth="2" opacity="0.6" />
+    
+    <rect x="20" y="38" width="4" height="4" rx="1" />
+    <line x1="28" y1="40" x2="40" y2="40" strokeWidth="2" opacity="0.6" />
+    
+    {/* Giant checkmark */}
+    <path d="M 18 48 L 22 52 L 34 38" strokeWidth="3.5" />
+  </svg>
+));
+
 const MarkdownRenderer = memo(({ content, className = "" }) => {
   const createMarkup = (text) => {
     if (!text || typeof text !== 'string') return { __html: "" };
@@ -641,7 +895,7 @@ const NavButton = memo(({ active, onClick, icon, label, disabled }) => (
     onClick={disabled ? undefined : onClick} 
     disabled={disabled}
     className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-      disabled ? 'opacity-40 cursor-not-allowed text-[#4C4A4B]' : 
+      disabled ? 'opacity-20 cursor-not-allowed text-[#4C4A4B]' : 
       active ? 'bg-white text-[#1E2F31] shadow-md border border-[#D8D8D8]' : 
       'text-[#4C4A4B] hover:text-[#1E2F31]'
     }`}
@@ -1104,6 +1358,134 @@ const ProjectOverviewView = memo(({ info, setInfo, isLocked }) => (
   </div>
 ));
 
+const CollaborationStrategyView = memo(({ isPresenting }) => (
+  <div className="space-y-6 animate-in fade-in duration-500 pb-12">
+    
+    {/* Strategy Header */}
+    <div className="bg-white rounded-[28px] p-6 lg:p-8 shadow-sm border border-[#D8D8D8] flex flex-col md:flex-row justify-between items-center gap-6">
+        <div>
+            <h2 className="text-2xl font-black text-[#1E2F31] tracking-tight mb-2 flex items-center gap-3">
+                <Network className="text-[#1C6048]" size={28}/> Cross-Border Patient Journey
+            </h2>
+            <p className="text-xs text-[#4C4A4B] font-medium max-w-2xl leading-relaxed">
+                A closed-loop collaboration model ensuring Vasanta captures maximum lifetime patient value through high-margin diagnostics and recurring therapies, while outsourcing only extreme-complexity interventions.
+            </p>
+        </div>
+    </div>
+
+    {/* 4-Card Flowchart Layout (1 Left, 2 Center, 1 Right) */}
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-10 relative mt-4">
+        
+        {/* LEFT COLUMN: Executive Diagnostics */}
+        <div className="flex flex-col h-full relative z-10">
+            <BentoBox className="flex-1 text-center bg-white border-[#D8D8D8] flex flex-col items-center">
+                <h3 className="font-black text-[15px] text-[#1E2F31] mb-6">Executive Diagnostics</h3>
+                
+                {/* Custom Diagnostics SVG */}
+                <div className="flex-1 w-full flex items-center justify-center min-h-[140px] mb-8">
+                    <div className="w-32 h-32 rounded-2xl border-2 border-[#D8D8D8] bg-[#F9F8F6] flex items-center justify-center text-[#9B8B70] transition-all hover:border-[#9B8B70] hover:shadow-md group">
+                        <CustomDiagnosticsIcon size={64} className="opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300" />
+                    </div>
+                </div>
+
+                <p className="text-[11px] text-[#4C4A4B] leading-relaxed font-medium mt-auto bg-[#F9F8F6] p-4 rounded-xl border border-[#D8D8D8] w-full">
+                    High-margin PET-CT and genomic screening act as the primary acquisition funnel locally.
+                </p>
+            </BentoBox>
+            
+            {/* Mobile Down Arrow (Visible only on mobile/tablet) */}
+            <div className="lg:hidden absolute -bottom-5 left-1/2 -translate-x-1/2 w-8 h-8 bg-[#9B8B70] border-4 border-[#F9F8F6] rounded-full flex items-center justify-center shadow-md z-10 text-white">
+                <ArrowRight size={14} strokeWidth={3} className="rotate-90" />
+            </div>
+        </div>
+
+        {/* CENTER COLUMN: 2 Stacked Cards (Elevated to z-20 to pull arrows forward) */}
+        <div className="flex flex-col gap-6 lg:gap-10 h-full relative z-20">
+            
+            {/* Left-to-Center Branching Arrow (Desktop Only) */}
+            <div className="hidden lg:block absolute -left-10 top-[26%] bottom-[26%] w-10 z-0 pointer-events-none">
+                <div className="absolute top-1/2 left-0 w-5 border-t-2 border-[#9B8B70] -translate-y-[1px]"></div>
+                <div className="absolute top-0 bottom-0 left-5 w-5 border-y-2 border-l-2 border-[#9B8B70] rounded-l-xl shadow-[-2px_0_4px_rgba(0,0,0,0.05)]"></div>
+                <ArrowRight size={18} className="absolute -top-[9px] -right-[7px] text-[#9B8B70]" strokeWidth={3} />
+                <ArrowRight size={18} className="absolute -bottom-[9px] -right-[7px] text-[#9B8B70]" strokeWidth={3} />
+            </div>
+
+            {/* Center-to-Right Merging Arrow (Desktop Only) */}
+            <div className="hidden lg:block absolute -right-10 top-[26%] bottom-[26%] w-10 z-0 pointer-events-none">
+                <div className="absolute top-0 bottom-0 right-5 w-5 border-y-2 border-r-2 border-[#9B8B70] rounded-r-xl shadow-[2px_0_4px_rgba(0,0,0,0.05)]"></div>
+                <div className="absolute top-1/2 right-0 w-5 border-t-2 border-[#9B8B70] -translate-y-[1px]"></div>
+                <ArrowRight size={18} className="absolute top-1/2 -mt-[9px] -right-[7px] text-[#9B8B70]" strokeWidth={3} />
+            </div>
+
+            {/* Middle Mobile Down Arrow (Visible only on mobile/tablet) */}
+            <div className="lg:hidden absolute top-[calc(50%-20px)] left-1/2 -translate-x-1/2 w-8 h-8 bg-[#9B8B70] border-4 border-[#F9F8F6] rounded-full flex items-center justify-center shadow-md z-10 text-white">
+                <ArrowRight size={14} strokeWidth={3} className="rotate-90" />
+            </div>
+
+            {/* Top Center: Local Systemic */}
+            <BentoBox className="flex-1 text-center bg-white border-[#D8D8D8] flex flex-col items-center">
+                <h3 className="font-black text-[15px] text-[#1E2F31] mb-4">Local Systemic & LINAC</h3>
+                
+                {/* Custom LINAC SVG */}
+                <div className="flex-1 w-full flex items-center justify-center min-h-[100px] mb-6">
+                    <div className="w-24 h-24 rounded-2xl border-2 border-[#D8D8D8] bg-[#F9F8F6] flex items-center justify-center text-[#9B8B70] transition-all hover:border-[#9B8B70] hover:shadow-md group">
+                        <CustomLinacIcon size={48} className="opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300" />
+                    </div>
+                </div>
+
+                <p className="text-[11px] text-[#4C4A4B] leading-relaxed font-medium mt-auto bg-[#F9F8F6] p-4 rounded-xl border border-[#D8D8D8] w-full">
+                    Most vast majority of cases require 30-day radiotherapy cycles or standard chemotherapy. Geographic inelasticity forces these patients to utilize our highly profitable local bunkers and VIP infusion suites.
+                </p>
+            </BentoBox>
+
+            {/* Bottom Center: Overseas Partner */}
+            <BentoBox className="flex-1 text-center bg-white border-[#D8D8D8] flex flex-col items-center">
+                <h3 className="font-black text-[15px] text-[#1E2F31] mb-4">Overseas Partner</h3>
+                
+                {/* Custom Overseas Partner SVG + DNA */}
+                <div className="flex-1 w-full flex items-center justify-center min-h-[100px] mb-6">
+                    <div className="px-5 h-24 rounded-2xl border-2 border-[#D8D8D8] bg-[#E8EFEA] flex items-center justify-center gap-4 transition-all hover:border-[#1C6048] hover:shadow-md group">
+                        <CustomOverseasIcon size={42} className="text-[#1C6048] opacity-80 group-hover:opacity-100 group-hover:-translate-x-1 group-hover:scale-110 transition-all duration-300" />
+                        <div className="w-px h-10 bg-[#D8D8D8] transition-colors group-hover:bg-[#1C6048]/30"></div>
+                        <Dna size={36} strokeWidth={1.5} className="text-[#1C6048] opacity-80 group-hover:opacity-100 group-hover:translate-x-1 group-hover:scale-110 transition-all duration-300" />
+                    </div>
+                </div>
+
+                <p className="text-[11px] text-[#1E2F31] leading-relaxed font-medium mt-auto bg-[#E8EFEA] p-4 rounded-xl border border-[#1C6048]/20 w-full">
+                    Only ultra-complex surgical cases are referred out, leveraging industrial trust without cannibalizing core local EBITDA.
+                </p>
+            </BentoBox>
+
+            {/* Mobile Down Arrow (Visible only on mobile/tablet) */}
+            <div className="lg:hidden absolute -bottom-5 left-1/2 -translate-x-1/2 w-8 h-8 bg-[#9B8B70] border-4 border-[#F9F8F6] rounded-full flex items-center justify-center shadow-md z-10 text-white">
+                <ArrowRight size={14} strokeWidth={3} className="rotate-90" />
+            </div>
+        </div>
+
+        {/* RIGHT COLUMN: Repatriation & Palliative */}
+        <div className="flex flex-col h-full relative z-10">
+            <BentoBox className="flex-1 text-center bg-white border-[#D8D8D8] flex flex-col items-center">
+                <h3 className="font-black text-[15px] text-[#1E2F31] mb-6">Repatriation & Palliative</h3>
+                
+                {/* Custom Palliative SVG + Medical Check Board */}
+                <div className="flex-1 w-full flex items-center justify-center min-h-[140px] mb-8">
+                    <div className="px-5 h-24 rounded-2xl border-2 border-[#D8D8D8] bg-[#F9F8F6] flex items-center justify-center gap-4 text-[#9B8B70] transition-all hover:border-[#9B8B70] hover:shadow-md group">
+                        <CustomPalliativeIcon size={48} className="opacity-80 group-hover:opacity-100 group-hover:-translate-x-1 group-hover:scale-110 transition-all duration-300" />
+                        <div className="w-px h-10 bg-[#D8D8D8] transition-colors group-hover:bg-[#9B8B70]/30"></div>
+                        <CustomClipboardIcon size={42} className="opacity-80 group-hover:opacity-100 group-hover:translate-x-1 group-hover:scale-110 transition-all duration-300" />
+                    </div>
+                </div>
+
+                <p className="text-[11px] text-[#4C4A4B] leading-relaxed font-medium mt-auto bg-[#F9F8F6] p-4 rounded-xl border border-[#D8D8D8] w-full">
+                    All overseas patients are mandated to return to the local hospital for multi-year monitoring, recovery, and high-margin palliative care.
+                </p>
+            </BentoBox>
+        </div>
+
+    </div>
+  </div>
+));
+
 const StudyView = memo(({ isPresenting, info }) => {
   const [activeMiniTab, setActiveMiniTab] = useState('marketGap');
 
@@ -1112,8 +1494,9 @@ const StudyView = memo(({ isPresenting, info }) => {
         {/* Navigation Bar for Study */}
         <div className="flex bg-white p-1.5 rounded-2xl border border-[#D8D8D8] shadow-sm w-fit overflow-x-auto max-w-full">
           <button 
-            onClick={() => setActiveMiniTab('macro')} 
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-[14px] text-xs font-bold transition-all whitespace-nowrap ${activeMiniTab === 'macro' ? 'bg-[#1C6048] text-white shadow-md' : 'text-[#4C4A4B] hover:text-[#1E2F31] hover:bg-[#EFEBE7]/50'}`}
+            disabled
+            className="flex items-center gap-2 px-5 py-2.5 rounded-[14px] text-xs font-bold transition-all whitespace-nowrap text-[#4C4A4B] opacity-20 cursor-not-allowed bg-gray-50"
+            title="Coming Soon"
           >
             <Map size={16}/> Macro Environment
           </button>
@@ -1290,23 +1673,61 @@ const StudyView = memo(({ isPresenting, info }) => {
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6 animate-in fade-in zoom-in-95 duration-300">
              
              {/* Target Demographics Bento */}
-             <BentoBox colSpan="md:col-span-4" className="bg-[#1E2F31] text-white border-transparent">
-                 <BentoIcon icon={<Users size={28}/>} color="emerald" className="bg-white/20 text-white"/>
-                 <h2 className="text-xl font-black text-white tracking-tight mb-6">Target Demographics</h2>
-                 <div className="space-y-6 flex-1">
-                    <div>
-                       <p className="text-[11px] text-white/70 font-bold uppercase tracking-wider mb-1">Total Catchment</p>
-                       <p className="text-3xl font-black">3.2M <span className="text-sm font-medium text-white/70">Lives</span></p>
-                    </div>
-                    <div className="w-full h-px bg-white/20"></div>
-                    <div>
-                       <p className="text-[11px] text-[#99B6AA] font-bold uppercase tracking-wider mb-1">SES A & B (Premium Target)</p>
-                       <p className="text-4xl font-black text-[#9B8B70]">~18%</p>
-                       <p className="text-sm font-bold mt-1">576,000 Addressable Patients</p>
-                    </div>
-                    <p className="text-[11px] text-white/80 leading-relaxed font-medium mt-auto bg-white/10 p-4 rounded-xl border border-white/20">
-                      A highly concentrated premium demographic pool, perfectly correlated with commercial health insurance ownership and medical tourism expenditure.
-                    </p>
+             <BentoBox colSpan="md:col-span-4" className="bg-white border-[#D8D8D8] flex flex-col">
+                 <BentoIcon icon={<Users size={28}/>} color="emerald" />
+                 <h2 className="text-xl font-black text-[#1E2F31] tracking-tight mb-6">Target Demographics</h2>
+                 
+                 <div className="flex-1 flex flex-col bg-[#F9F8F6] rounded-2xl border border-[#D8D8D8] p-5 relative overflow-hidden mb-4">
+                     <h3 className="text-[11px] text-[#1C6048] font-bold uppercase tracking-wider text-center mb-2">Premium Addressable Market</h3>
+                     
+                     <div className="flex-1 min-h-[180px] relative w-full flex items-center justify-center my-4">
+                         <ResponsiveContainer width="100%" height="100%">
+                             <PieChart>
+                                 <Pie 
+                                    data={[{name: 'SES A & B', value: 18}, {name: 'General / BPJS', value: 82}]} 
+                                    cx="50%" cy="50%" 
+                                    startAngle={90} endAngle={-270} 
+                                    innerRadius="40%" outerRadius="60%" 
+                                    dataKey="value" stroke="none"
+                                    label={renderPieLabel}
+                                    labelLine={{ stroke: '#D8D8D8', strokeWidth: 1 }}
+                                    className="outline-none"
+                                 >
+                                     <Cell fill="#9B8B70" />
+                                     <Cell fill="#294043" />
+                                 </Pie>
+                                 <Tooltip 
+                                    cursor={{fill: 'transparent'}}
+                                    contentStyle={{ borderRadius: '8px', border: '1px solid #D8D8D8', backgroundColor: '#fff', color: '#1E2F31', fontSize: '11px', fontWeight: 'bold' }} 
+                                    itemStyle={{ color: '#1E2F31' }}
+                                    formatter={(val) => `${val}%`}
+                                 />
+                             </PieChart>
+                         </ResponsiveContainer>
+                     </div>
+
+                     <div className="grid grid-cols-2 gap-4 w-full border-t border-[#D8D8D8] pt-5 mt-auto">
+                         <div className="flex flex-col justify-between text-center border-r border-[#D8D8D8] h-full">
+                             <p className="text-[10px] text-[#4C4A4B] font-bold uppercase tracking-wider mb-2">Total Catchment</p>
+                             <p className="text-xl font-black text-[#1E2F31] leading-none">3.2M</p>
+                         </div>
+                         <div className="flex flex-col justify-between text-center h-full">
+                             <p className="text-[10px] text-[#9B8B70] font-bold uppercase tracking-wider mb-2">SES A & B</p>
+                             <p className="text-xl font-black text-[#9B8B70] leading-none">576k</p>
+                         </div>
+                     </div>
+                 </div>
+
+                 <div className="bg-[#EFEBE7] p-4 rounded-xl border border-[#D8D8D8] space-y-3 mt-auto">
+                     <div>
+                        <p className="text-[10px] font-bold text-[#1E2F31] uppercase tracking-widest mb-1">What is SES A & B?</p>
+                        <p className="text-[10px] text-[#4C4A4B] leading-relaxed font-medium">Socio-Economic Status (SES) A & B represents the upper-middle to affluent class, highly correlated with private health insurance and medical tourism spending.</p>
+                     </div>
+                     <div className="w-full h-px bg-[#D8D8D8]"></div>
+                     <div>
+                        <p className="text-[10px] font-bold text-[#1C6048] uppercase tracking-widest mb-1">Deriving 576k Lives</p>
+                        <p className="text-[10px] text-[#4C4A4B] leading-relaxed font-medium">Calculated directly by capturing exactly <strong className="text-[#1E2F31]">18%</strong> of the <strong className="text-[#1E2F31]">3.2 Million</strong> total regional catchment population.</p>
+                     </div>
                  </div>
              </BentoBox>
 
@@ -1797,10 +2218,19 @@ const OpCoCascadeView = memo(({ data, assumptions }) => (
                   <TableRow label="EBITDA" data={data.annualData} dk="ebitda" total={data.totals.ebitda} highlight />
                   <TableRow label="Corporate Tax" data={data.annualData} dk="tax" total={data.totals.tax} isIndent />
                   
-                  <TableSection title="F. Free Cash Flow" colSpan={data.annualData.length + 2} type="emerald" />
+                  <TableSection title="F. Free Cash Flow & Retained Earnings" colSpan={data.annualData.length + 2} type="emerald" />
                   <TableRow label="NET INCOME" data={data.annualData} dk="netIncome" total={data.totals.netIncome} highlight emerald />
                   <TableRow label="Cumulative Net Income" data={data.annualData} dk="cumNI" highlight crossover bold indigo />
-                  <TableRow label="Distributable Profit" data={data.annualData} dk="distributableProfit" total={data.totals.distributableProfit} highlight />
+                  <TableRow label={`Distributable Profit (${assumptions.dividendPayoutRatio ?? 100}%)`} data={data.annualData} dk="distributableProfit" total={data.totals.distributableProfit} highlight />
+                  <TableRow label={`Retained Earnings (${100 - (assumptions.dividendPayoutRatio ?? 100)}%)`} data={data.annualData} dk="retainedThisYear" total={data.totals.retainedThisYear} isIndent />
+                  <TableRow label="Cumulative Retained Cash" data={data.annualData} dk="cumulativeRetainedEarnings" highlight crossover bold indigo />
+
+                  <TableSection title="G. Terminal Value (Exit)" colSpan={data.annualData.length + 2} />
+                  <TableRow label="OpCo Enterprise Value (EV)" data={data.annualData} dk="ev" total={data.totals.ev} highlight />
+                  <TableRow label="+ Retained Cash Sweep" data={data.annualData} dk="cumulativeRetainedEarnings" total={data.totals.retainedThisYear} isIndent />
+                  <TableRow label="Total Exit Equity Value" data={data.annualData} dk="opCoExit" total={data.totals.opCoExit} highlight />
+                  <TableRow label="Strategic Ptnr Proceeds (51%)" data={data.annualData} dk="pA_Exit" total={data.totals.pA_Exit} isIndent />
+                  <TableRow label="Vasanta Proceeds (49%)" data={data.annualData} dk="pB_Exit" total={data.totals.pB_Exit} isIndent />
               </tbody>
           </table>
       </div>
@@ -2020,6 +2450,7 @@ const PropCoCascadeView = memo(({ data, onExport }) => (
                     <TableRow label="Property Taxes" data={data.annualData} dk="taxOpex" total={data.totals.taxOpex} isIndent />
                     <TableRow label="Overhead OpEx" data={data.annualData} dk="overheadOpex" total={data.totals.overheadOpex} isIndent />
                     <TableRow label="FF&E Reserve" data={data.annualData} dk="ffeReserve" total={data.totals.ffeReserve} isIndent />
+                    <TableRow label="MedEq Lease Expense" data={data.annualData} dk="medEqLeaseOpex" total={data.totals.medEqLeaseOpex} isIndent />
                     <TableRow label="EBITDA (NOI)" data={data.annualData} dk="ebitda" total={data.totals.ebitda} highlight />
 
                     <TableSection title="B. Debt Service & Taxes" colSpan={data.annualData.length + 2} />
@@ -2032,6 +2463,7 @@ const PropCoCascadeView = memo(({ data, onExport }) => (
 
                     <TableSection title="C. Return Metrics" colSpan={data.annualData.length + 2} type="emerald" />
                     <TableRow label="NET INCOME" data={data.annualData} dk="netIncome" total={data.totals.netIncome} highlight />
+                    <TableRow label="Deferred MedEq Purchase" data={data.annualData} dk="deferredCapex" total={data.totals.deferredCapex} isIndent />
                     <TableRow label="Net Exit Proceeds" data={data.annualData} dk="netExitProceeds" total={data.totals.netExitProceeds} highlight />
                     <TableRow label="FCFE (Levered)" data={data.annualData} dk="fcfe" highlight emerald total={data.totals.fcfe} />
                     <TableRow label="Cumulative FCFE" data={data.annualData} dk="cumFcfe" highlight crossover bold indigo />
@@ -2060,6 +2492,9 @@ const ConsolidatedDashboardView = memo(({ data, assumptions, isPresenting }) => 
           <KPICard title="Blended Cash Multiple" value={`${formatNumber(data.metrics.moic, 2)}x`} icon={<BarChart3 size={18} />} color="blue" subtitle="Consolidated MOIC" />
           <KPICard title="Blended Equity IRR" value={`${formatNumber((data.metrics.irr || 0) * 100, 2)}%`} icon={<Activity size={18} />} color="emerald" subtitle="Compounded Return" />
           <KPICard title="Blended Payback" value={`${formatNumber(data.metrics.payback, 1)} Yrs`} icon={<Clock size={18} />} color="indigo" subtitle="From Year 1" />
+          <div className="col-span-2">
+            <KPICard title="Project Avg Net Margin" value={`${formatNumber(data.totals.lookThroughMargin, 1)}%`} icon={<PieChartIcon size={18} />} color="blue" subtitle="Across 12-Year Lifecycle" />
+          </div>
        </div>
 
        <div className="bg-white p-5 lg:p-6 rounded-2xl shadow-sm border border-[#D8D8D8]">
@@ -2091,6 +2526,26 @@ const ConsolidatedDashboardView = memo(({ data, assumptions, isPresenting }) => 
     
     <div className={`space-y-6 ${isPresenting ? "lg:col-span-8" : ""}`}>
        <div className="bg-white p-5 lg:p-6 rounded-2xl shadow-sm border border-[#D8D8D8]">
+          <h3 className="font-bold text-[#1E2F31] mb-6 flex items-center gap-2"><BarChart3 size={18} className="text-[#99B6AA]"/> Managerial Look-Through PnL</h3>
+          <div className={isPresenting ? "h-[300px]" : "h-72"}>
+              <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={data.operatingData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#D8D8D8" />
+                  <XAxis dataKey="year" tick={{fontSize: 10, fill: '#4C4A4B'}} axisLine={false} />
+                  <YAxis yAxisId="left" tick={{fontSize: 10, fill: '#4C4A4B'}} axisLine={false} tickFormatter={(val) => `${val}B`} />
+                  <YAxis yAxisId="right" orientation="right" tick={{fontSize: 10, fill: '#1E2F31'}} axisLine={false} tickFormatter={(val) => `${val}%`} />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(val, name) => formatNumber(val, 1) + (name.includes('Margin') ? '%' : 'B')} />
+                  <Legend iconType="circle" wrapperStyle={LEGEND_STYLE} />
+                  
+                  <Bar yAxisId="left" dataKey="lookThroughRevenue" name="Look-Through Revenue" fill="#EFEBE7" radius={[4, 4, 0, 0]} barSize={40} />
+                  <Bar yAxisId="left" dataKey="lookThroughEbitda" name="Look-Through EBITDA" fill="#9B8B70" radius={[4, 4, 0, 0]} barSize={40} />
+                  <Line yAxisId="right" type="monotone" dataKey="lookThroughMargin" name="Net Profit Margin" stroke="#1C6048" strokeWidth={3} dot={{ r: 4, fill: '#1C6048', strokeWidth: 2, stroke: '#fff' }} />
+              </ComposedChart>
+              </ResponsiveContainer>
+          </div>
+       </div>
+
+       <div className="bg-white p-5 lg:p-6 rounded-2xl shadow-sm border border-[#D8D8D8]">
           <h3 className="font-bold text-[#1E2F31] mb-6 flex items-center gap-2"><BarChart3 size={18} className="text-[#1E2F31]"/> Consolidated Cash Flow Trajectory</h3>
           <div className={isPresenting ? "h-[450px]" : "h-80"}>
               <ResponsiveContainer width="100%" height="100%">
@@ -2103,7 +2558,8 @@ const ConsolidatedDashboardView = memo(({ data, assumptions, isPresenting }) => 
                   <Legend iconType="circle" wrapperStyle={LEGEND_STYLE} />
                   
                   <Bar yAxisId="left" stackId="a" dataKey="propCoFlow" name="PropCo FCFE" fill="#9B8B70" radius={[0, 0, 0, 0]} barSize={40} />
-                  <Bar yAxisId="left" stackId="a" dataKey="opCoFlow" name="OpCo Dividend (49%)" fill="#1C6048" radius={[4, 4, 0, 0]} barSize={40} />
+                  <Bar yAxisId="left" stackId="a" dataKey="opCoOperatingFlow" name="OpCo Dividend (49%)" fill="#1C6048" radius={[0, 0, 0, 0]} barSize={40} />
+                  <Bar yAxisId="left" stackId="a" dataKey="opCoExitFlow" name="OpCo Exit (49%)" fill="#99B6AA" radius={[4, 4, 0, 0]} barSize={40} />
                   
                   <Line yAxisId="right" type="monotone" dataKey="cumCf" name="Cumulative Net Position" stroke="#1E2F31" strokeWidth={3} dot={{ r: 4, fill: '#1E2F31', strokeWidth: 2, stroke: '#fff' }} />
                   <ReferenceLine yAxisId="right" y={0} stroke="#D8D8D8" strokeWidth={1} strokeDasharray="5 5" />
@@ -2137,11 +2593,18 @@ const ConsolidatedCascadeView = memo(({ data }) => (
               <tbody>
                   <TableSection title="A. Component Cash Flows" colSpan={data.annualData.length + 2} />
                   <TableRow label="PropCo FCFE (100%)" data={data.annualData} dk="propCoFlow" total={data.totals.propCoFlow} isIndent />
-                  <TableRow label="OpCo Dividend (49%)" data={data.annualData} dk="opCoFlow" total={data.totals.opCoFlow} isIndent />
+                  <TableRow label="OpCo Dividend (49%)" data={data.annualData} dk="opCoOperatingFlow" total={data.totals.opCoOperatingFlow} isIndent />
+                  <TableRow label="OpCo Exit Proceeds (49%)" data={data.annualData} dk="opCoExitFlow" total={data.totals.opCoExitFlow} isIndent />
                   
                   <TableSection title="B. Consolidated Position" colSpan={data.annualData.length + 2} type="emerald" />
                   <TableRow label="NET COMBINED CASH FLOW" data={data.annualData} dk="netFlow" total={data.totals.netFlow} highlight emerald />
                   <TableRow label="Cumulative Net Position" data={data.annualData} dk="cumCf" highlight crossover bold indigo />
+
+                  <TableSection title="C. Managerial Look-Through PnL" colSpan={data.annualData.length + 2} />
+                  <TableRow label="Look-Through Revenue" data={data.annualData} dk="lookThroughRevenue" total={data.totals.lookThroughRevenue} isIndent />
+                  <TableRow label="Look-Through EBITDA" data={data.annualData} dk="lookThroughEbitda" total={data.totals.lookThroughEbitda} isIndent />
+                  <TableRow label="Look-Through Net Income" data={data.annualData} dk="lookThroughNetIncome" total={data.totals.lookThroughNetIncome} highlight />
+                  <TableRow label="Blended Net Margin (%)" data={data.annualData} dk="lookThroughMargin" total={data.totals.lookThroughMargin} highlight indigo />
               </tbody>
           </table>
       </div>
@@ -2200,6 +2663,7 @@ const OpCoSettingsView = memo(({ assumptions, onChange, onSyncEquity, onValidate
           </div>
           <div className="space-y-4">
               <SectionTitle title="Capital, Setup & Tax" icon={<Scale size={16}/>} color="blue" />
+              <AssumptionRow label="Dividend Payout Ratio" val={assumptions.dividendPayoutRatio ?? 100} set={(v) => onChange('dividendPayoutRatio', v)} unit="%" isLocked={isLocked} />
               <AssumptionRow label="Strategic Ptnr Eq." val={assumptions.partnerAEquity} set={(v) => onChange('partnerAEquity', v)} unit="B" isLocked={isLocked} />
               <AssumptionRow label="Vasanta Equity" val={assumptions.partnerBEquity} set={(v) => onChange('partnerBEquity', v)} unit="B" isLocked={isLocked} />
               <AssumptionRow label="Strategic Ptnr Share" val={assumptions.sharingPercentA} set={(v) => onChange('sharingPercentA', v)} unit="%" isLocked={isLocked} />
@@ -2207,13 +2671,23 @@ const OpCoSettingsView = memo(({ assumptions, onChange, onSyncEquity, onValidate
               <AssumptionRow label="HoldCo Disc. Rate" val={assumptions.holdCoDiscountRate} set={(v) => onChange('holdCoDiscountRate', v)} unit="%" isLocked={isLocked} />
               <button onClick={onSyncEquity} disabled={isLocked} className="w-full py-2 bg-[#1E2F31] text-white rounded-lg text-[10px] font-bold shadow-md hover:opacity-90 mt-2 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"><Link2 size={12}/> Align Equity</button>
           </div>
+          <div className="space-y-4">
+              <SectionTitle title="Terminal Value (Exit)" icon={<DollarSign size={16}/>} color="amber" />
+              <ToggleRow label="Include Exit in Yr 10" desc="Calculate OpCo Valuation." checked={assumptions.includeTerminalValue} onChange={(v) => onChange('includeTerminalValue', v)} isLocked={isLocked} />
+              {assumptions.includeTerminalValue && (
+                  <>
+                  <AssumptionRow label="Exit Multiple" val={assumptions.exitMultiple} set={(v) => onChange('exitMultiple', v)} unit="x" isLocked={isLocked} />
+                  <AssumptionRow label="Selling Costs" val={assumptions.sellingCosts} set={(v) => onChange('sellingCosts', v)} unit="%" isLocked={isLocked} />
+                  </>
+              )}
+          </div>
       </div>
   </div>
 ));
 
 const PropCoSettingsView = memo(({ assumptions, onChange, isLocked, onToggleLock, onSave, saveStatus, onReset, onValidate, isCloudSync, isPresenting }) => {
   const buildCostForUi = (assumptions.buildArea * assumptions.buildCost) / 1000;
-  const medEqCostForUi = assumptions.includeMedEq ? (assumptions.capexMedEqQty * assumptions.capexMedEqPrice) / 1000 : 0;
+  const medEqCostForUi = (assumptions.includeMedEq && assumptions.medEqProcurement !== 'lease') ? (assumptions.capexMedEqQty * assumptions.capexMedEqPrice) / 1000 : 0;
   const infraCostForUi = (assumptions.capexInfraQty * assumptions.capexInfraPrice) / 1000;
   const ffeCostForUi = assumptions.includeFFE ? (assumptions.capexFFEQty * assumptions.capexFFEPrice) / 1000 : 0;
   const coreCostForPctUi = buildCostForUi + ffeCostForUi + medEqCostForUi + infraCostForUi;
@@ -2237,17 +2711,41 @@ const PropCoSettingsView = memo(({ assumptions, onChange, isLocked, onToggleLock
           </div>
           <div className="space-y-4">
             <SectionTitle title="Land & Construction" icon={<Map size={16}/>} color="emerald" />
-            <AssumptionRow label="Land Area" val={assumptions.landArea} set={(v) => onChange('landArea', v)} unit="Sqm" isLocked={isLocked} />
-            <AssumptionRow label="Land Price" val={assumptions.landPrice} set={(v) => onChange('landPrice', v)} unit="M/Sqm" isLocked={isLocked} />
+            <ToggleRow label="Include Land Cost" desc="Calculate Land Acquisition." checked={assumptions.includeLand ?? true} onChange={(v) => onChange('includeLand', v)} isLocked={isLocked} />
+            <div className={!(assumptions.includeLand ?? true) ? 'opacity-50 pointer-events-none' : ''}>
+                <AssumptionRow label="Land Area" val={assumptions.landArea} set={(v) => onChange('landArea', v)} unit="Sqm" isLocked={isLocked} />
+                <AssumptionRow label="Land Price" val={assumptions.landPrice} set={(v) => onChange('landPrice', v)} unit="M/Sqm" isLocked={isLocked} />
+            </div>
             <AssumptionRow label="Building Area" val={assumptions.buildArea} set={(v) => onChange('buildArea', v)} unit="Sqm" isLocked={isLocked} />
             <AssumptionRow label="Construction Cost" val={assumptions.buildCost} set={(v) => onChange('buildCost', v)} unit="M/Sqm" isLocked={isLocked} />
             <AssumptionRow label="Dev. Duration" val={assumptions.devDurationMonths} set={(v) => onChange('devDurationMonths', v)} unit="Mos" isLocked={isLocked} />
+            <AssumptionRow label="Year 1 Capex Draw" val={assumptions.equityDrawYear1Pct ?? 100} set={(v) => onChange('equityDrawYear1Pct', Math.min(100, Math.max(0, parseFloat(v) || 0)))} unit="%" isLocked={isLocked || assumptions.devDurationMonths <= 12} />
           </div>
           <div className="space-y-4">
               <SectionTitle title="Other Capex & VAT" icon={<Calculator size={16}/>} color="rose" />
               <AssumptionRowCalculated label="Consultant" pctVal={assumptions.capexConsultantPct} setPct={(v) => onChange('capexConsultantPct', v)} calculatedVal={consultantCostUi} isLocked={isLocked} />
               <AssumptionRowCalculated label="License/Permit" pctVal={assumptions.capexLicensePct} setPct={(v) => onChange('capexLicensePct', v)} calculatedVal={licenseCostUi} isLocked={isLocked} />
               <AssumptionRowQtyPriceWithToggle label="Medical Equip." qtyVal={assumptions.capexMedEqQty} priceVal={assumptions.capexMedEqPrice} setQty={(v) => onChange('capexMedEqQty', v)} setPrice={(v) => onChange('capexMedEqPrice', v)} checked={assumptions.includeMedEq} onToggle={(v) => onChange('includeMedEq', v)} isLocked={isLocked} />
+              
+              {assumptions.includeMedEq && (
+                  <div className="pl-3 pr-1 py-2 bg-[#F9F8F6] border-b border-[#D8D8D8] space-y-2 rounded-lg ml-2 border-l-2 border-l-[#1C6048]">
+                      <div className="flex justify-between items-center group">
+                          <label className="text-[10px] text-[#4C4A4B] font-bold">Strategy</label>
+                          <div className="flex items-center bg-[#D8D8D8] rounded p-0.5">
+                              <button disabled={isLocked} onClick={() => onChange('medEqProcurement', 'buy')} className={`px-2 py-0.5 text-[9px] font-bold rounded disabled:opacity-50 disabled:cursor-not-allowed ${assumptions.medEqProcurement !== 'lease' ? 'bg-white text-[#1E2F31] shadow-sm border border-[#D8D8D8]' : 'text-[#4C4A4B]'}`}>Upfront Buy</button>
+                              <button disabled={isLocked} onClick={() => onChange('medEqProcurement', 'lease')} className={`px-2 py-0.5 text-[9px] font-bold rounded disabled:opacity-50 disabled:cursor-not-allowed ${assumptions.medEqProcurement === 'lease' ? 'bg-white text-[#1E2F31] shadow-sm border border-[#D8D8D8]' : 'text-[#4C4A4B]'}`}>Lease-to-Own</button>
+                          </div>
+                      </div>
+                      {assumptions.medEqProcurement === 'lease' && (
+                          <>
+                              <AssumptionRow label="Lease Cost (Mo)" val={assumptions.medEqLeaseMonthly} set={(v) => onChange('medEqLeaseMonthly', v)} unit="B" isLocked={isLocked} />
+                              <AssumptionRow label="Purchase Year (Op)" val={assumptions.medEqPurchaseOpYear} set={(v) => onChange('medEqPurchaseOpYear', v)} unit="Yr" isLocked={isLocked} />
+                              <AssumptionRow label="Purchase Amount" val={assumptions.medEqPurchaseAmount} set={(v) => onChange('medEqPurchaseAmount', v)} unit="M" isLocked={isLocked} />
+                          </>
+                      )}
+                  </div>
+              )}
+
               <AssumptionRowQtyPriceWithToggle label="FF&E" qtyVal={assumptions.capexFFEQty} priceVal={assumptions.capexFFEPrice} setQty={(v) => onChange('capexFFEQty', v)} setPrice={(v) => onChange('capexFFEPrice', v)} checked={assumptions.includeFFE} onToggle={(v) => onChange('includeFFE', v)} isLocked={isLocked} />
               <AssumptionRowQtyPrice label="Infrastructure" qtyVal={assumptions.capexInfraQty} priceVal={assumptions.capexInfraPrice} setQty={(v) => onChange('capexInfraQty', v)} setPrice={(v) => onChange('capexInfraPrice', v)} isLocked={isLocked} />
               <AssumptionRowQtyPrice label="Sharing Dev." qtyVal={assumptions.capexSharingDevQty} priceVal={assumptions.capexSharingDevPrice} setQty={(v) => onChange('capexSharingDevQty', v)} setPrice={(v) => onChange('capexSharingDevPrice', v)} isLocked={isLocked} />
@@ -2345,7 +2843,7 @@ function AIAuditView({ aiInsights, isAiLoading, generateAIInsights, askQuery, se
 export default function App() {
   const [activeGroup, setActiveGroup] = useState('context'); // 'context' or 'financials'
   const [activeCompany, setActiveCompany] = useState('opco'); 
-  const [activeTab, setActiveTab] = useState('study'); 
+  const [activeTab, setActiveTab] = useState('overview'); 
   const [isLockedOpCo, setIsLockedOpCo] = useState(true);
   const [isLockedPropCo, setIsLockedPropCo] = useState(true);
   const [isPresenting, setIsPresenting] = useState(false);
@@ -2356,9 +2854,9 @@ export default function App() {
   const [user, setUser] = useState(null);
 
   const [projectInfo, setProjectInfo] = useState({ 
-    name: "Vasanta Hospital Development", 
+    name: "Vasanta Hospital Project Development", 
     location: "Tangerang, Banten", 
-    type: "General Hospital (Class B)", 
+    type: "Specialized Hospital (Class A)", 
     totalLand: "12,643 Sqm", 
     totalBuilding: "13,000 Sqm", 
     status: "Planning / Feasibility Phase" 
@@ -2398,6 +2896,11 @@ export default function App() {
     setActiveGroup(group);
     if (group === 'context') setActiveTab('overview');
     else setActiveTab('dashboard');
+  }, []);
+
+  const handleCompanyChange = useCallback((comp) => {
+    setActiveCompany(comp);
+    setActiveTab(prev => (comp === 'consolidated' && (prev === 'assumptions' || prev === 'sensitivity')) ? 'dashboard' : prev);
   }, []);
 
   // ==========================================
@@ -2456,8 +2959,8 @@ export default function App() {
     finally { setSelectionState(p => ({...p, isLoading: false})); }
   }, [selectionState.query]);
 
-  const handleOpCoChange = useCallback((k, v) => setOpCoAssumptions(p => ({ ...p, [k]: (v === "" ? 0 : parseFloat(v)) || 0 })), []);
-  const handlePropCoChange = useCallback((k, v) => setPropCoAssumptions(p => ({ ...p, [k]: ['linkToOpCo', 'includeMedEq', 'includeFFE', 'depMethodBuilding', 'depMethodMedEq', 'depMethodInfra', 'depMethodFFE', 'includeTerminalValue', 'exitMethod', 'includeFinancing'].includes(k) ? v : (v === "" ? 0 : parseFloat(v)) || 0 })), []);
+  const handleOpCoChange = useCallback((k, v) => setOpCoAssumptions(p => ({ ...p, [k]: ['includeTerminalValue'].includes(k) ? v : (v === "" ? 0 : parseFloat(v)) || 0 })), []);
+  const handlePropCoChange = useCallback((k, v) => setPropCoAssumptions(p => ({ ...p, [k]: ['linkToOpCo', 'includeLand', 'includeMedEq', 'medEqProcurement', 'includeFFE', 'depMethodBuilding', 'depMethodMedEq', 'depMethodInfra', 'depMethodFFE', 'includeTerminalValue', 'exitMethod', 'includeFinancing'].includes(k) ? v : (v === "" ? 0 : parseFloat(v)) || 0 })), []);
 
   const syncEquityWithSharing = useCallback(() => {
     setOpCoAssumptions(p => {
@@ -2605,12 +3108,13 @@ export default function App() {
               <h1 className="text-xl font-bold flex items-center gap-2 text-[#1E2F31]">
                 {activeTab === 'overview' ? <Info className="text-[#1C6048]" /> : 
                  activeTab === 'study' ? <BookOpen className="text-[#1C6048]" /> :
+                 activeTab === 'collab' ? <Network className="text-[#1C6048]" /> :
                  activeCompany === 'opco' ? <Activity className="text-[#1C6048]" /> : 
                  activeCompany === 'propco' ? <Building2 className="text-[#9B8B70]" /> : 
                  <Layers className="text-[#1E2F31]" />} 
-
                 {activeTab === 'overview' ? "Project Context" : 
                  activeTab === 'study' ? "Feasibility Study" :
+                 activeTab === 'collab' ? "Collaboration Strategy" :
                  activeCompany === 'opco' ? "Hospital Operation Model" : 
                  activeCompany === 'propco' ? "PropCo Real Estate Model" :
                  "HoldCo Consolidated Position"}
@@ -2623,19 +3127,21 @@ export default function App() {
                 <>
                   <NavButton active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} icon={<FileText size={14} />} label="Overview" />
                   <NavButton active={activeTab === 'study'} onClick={() => setActiveTab('study')} icon={<BookOpen size={14} />} label="Study" />
+                  <NavButton active={activeTab === 'collab'} onClick={() => setActiveTab('collab')} icon={<Network size={14} />} label="Collaboration Strategy" />
                 </>
               ) : (
                 <>
                   <div className="flex bg-white p-0.5 rounded-md border border-[#D8D8D8] mr-2 shadow-sm animate-in slide-in-from-right duration-300">
-                      <button onClick={() => setActiveCompany('opco')} className={`px-3 py-1 rounded text-[11px] font-black uppercase tracking-wider transition-all ${activeCompany === 'opco' ? 'bg-[#1C6048] text-white' : 'text-[#4C4A4B] hover:text-[#1E2F31]'}`}>OpCo</button>
-                      <button onClick={() => setActiveCompany('propco')} className={`px-3 py-1 rounded text-[11px] font-black uppercase tracking-wider transition-all ${activeCompany === 'propco' ? 'bg-[#9B8B70] text-white' : 'text-[#4C4A4B] hover:text-[#1E2F31]'}`}>PropCo</button>
-                      <button onClick={() => { setActiveCompany('consolidated'); if (activeTab === 'sensitivity' || activeTab === 'assumptions') setActiveTab('dashboard'); }} className={`px-3 py-1 rounded text-[11px] font-black uppercase tracking-wider transition-all ${activeCompany === 'consolidated' ? 'bg-[#1E2F31] text-white' : 'text-[#4C4A4B] hover:text-[#1E2F31]'}`}>HoldCo</button>
+                    <button onClick={() => handleCompanyChange('opco')} className={`px-3 py-1 rounded text-[10px] font-bold transition-colors ${activeCompany === 'opco' ? 'bg-[#1C6048] text-white shadow-inner' : 'text-[#4C4A4B] hover:bg-[#F9F8F6]'}`}>OpCo</button>
+                    <button onClick={() => handleCompanyChange('propco')} className={`px-3 py-1 rounded text-[10px] font-bold transition-colors ${activeCompany === 'propco' ? 'bg-[#9B8B70] text-white shadow-inner' : 'text-[#4C4A4B] hover:bg-[#F9F8F6]'}`}>PropCo</button>
+                    <button onClick={() => handleCompanyChange('consolidated')} className={`px-3 py-1 rounded text-[10px] font-bold transition-colors ${activeCompany === 'consolidated' ? 'bg-[#1E2F31] text-white shadow-inner' : 'text-[#4C4A4B] hover:bg-[#F9F8F6]'}`}>HoldCo</button>
                   </div>
                   <NavButton active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} icon={<LayoutDashboard size={14} />} label="Dashboard" />
-                  <NavButton active={activeTab === 'ai'} onClick={() => setActiveTab('ai')} icon={<AIMicroscopeIcon size={14} />} label="AI Audit" />
-                  <NavButton active={activeTab === 'comprehensive'} onClick={() => setActiveTab('comprehensive')} icon={<List size={14} />} label="Full Cascade" />
-                  <NavButton active={activeTab === 'sensitivity'} onClick={() => setActiveTab('sensitivity')} icon={<Grid size={14} />} label="Sensitivity" disabled={activeCompany === 'consolidated'} />
+                  <NavButton active={activeTab === 'comprehensive'} onClick={() => setActiveTab('comprehensive')} icon={<List size={14} />} label="Cascade" />
+                  <NavButton active={activeTab === 'sensitivity'} onClick={() => setActiveTab('sensitivity')} icon={<TrendingUp size={14} />} label="Sensitivity" disabled={activeCompany === 'consolidated'} />
                   <NavButton active={activeTab === 'assumptions'} onClick={() => setActiveTab('assumptions')} icon={<Settings size={14} />} label="Settings" disabled={activeCompany === 'consolidated'} />
+                  <div className="w-px h-4 bg-[#D8D8D8] mx-1"></div>
+                  <NavButton active={activeTab === 'ai'} onClick={() => setActiveTab('ai')} icon={<AIMicroscopeIcon size={14} />} label="AI Audit" />
                 </>
               )}
             </div>
@@ -2646,8 +3152,9 @@ export default function App() {
       <main className={`transition-all duration-300 ${containerClass} ${isPresenting ? 'mt-4' : 'mt-6'}`}>
         {activeTab === 'overview' && <ProjectOverviewView info={projectInfo} setInfo={setProjectInfo} isLocked={activeCompany === 'opco' ? isLockedOpCo : isLockedPropCo} />}
         {activeTab === 'study' && <StudyView isPresenting={isPresenting} info={projectInfo} />}
+        {activeTab === 'collab' && <CollaborationStrategyView isPresenting={isPresenting} />}
         
-        {activeTab !== 'overview' && activeTab !== 'study' && activeTab !== 'ai' && activeCompany === 'opco' && activeGroup === 'financials' && (
+        {activeTab !== 'overview' && activeTab !== 'study' && activeTab !== 'collab' && activeTab !== 'ai' && activeCompany === 'opco' && activeGroup === 'financials' && (
             <div className="animate-in fade-in duration-500">
                 {activeTab === 'dashboard' && <OpCoDashboardView data={opCoModelData} assumptions={opCoAssumptions} generateTeaser={generateTeaser} isTeaserLoading={isTeaserLoading} showTeaser={showTeaser} setShowTeaser={setShowTeaser} teaserContent={teaserContent} isPresenting={isPresenting} />}
                 {activeTab === 'comprehensive' && <OpCoCascadeView data={opCoModelData} assumptions={opCoAssumptions} />}
@@ -2656,7 +3163,7 @@ export default function App() {
             </div>
         )}
         
-        {activeTab !== 'overview' && activeTab !== 'study' && activeTab !== 'ai' && activeCompany === 'propco' && activeGroup === 'financials' && (
+        {activeTab !== 'overview' && activeTab !== 'study' && activeTab !== 'collab' && activeTab !== 'ai' && activeCompany === 'propco' && activeGroup === 'financials' && (
             <div className="animate-in fade-in duration-500">
                 {activeTab === 'dashboard' && <PropCoDashboardView data={propCoModelData} assumptions={propCoAssumptions} generateTeaser={generateTeaser} isTeaserLoading={isTeaserLoading} showTeaser={showTeaser} setShowTeaser={setShowTeaser} teaserContent={teaserContent} setTab={setActiveTab} isPresenting={isPresenting} />}
                 {activeTab === 'comprehensive' && <PropCoCascadeView data={propCoModelData} onExport={() => {}} />}
@@ -2665,7 +3172,7 @@ export default function App() {
             </div>
         )}
 
-        {activeTab !== 'overview' && activeTab !== 'study' && activeTab !== 'ai' && activeCompany === 'consolidated' && activeGroup === 'financials' && (
+        {activeTab !== 'overview' && activeTab !== 'study' && activeTab !== 'collab' && activeTab !== 'ai' && activeCompany === 'consolidated' && activeGroup === 'financials' && (
             <div className="animate-in fade-in duration-500">
                 {activeTab === 'dashboard' && <ConsolidatedDashboardView data={consolidatedModelData} assumptions={opCoAssumptions} isPresenting={isPresenting} />}
                 {activeTab === 'comprehensive' && <ConsolidatedCascadeView data={consolidatedModelData} />}
